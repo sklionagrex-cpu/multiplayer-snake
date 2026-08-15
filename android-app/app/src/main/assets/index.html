@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Multiplayer Snake</title>
+<style>
+  :root {
+    --bg: #0b140b;
+    --card: #122012;
+    --card2: #1a2b1a;
+    --accent: #4ade80;
+    --accent-dim: #22c55e;
+    --text: #e8ffe8;
+    --muted: #8aaa8a;
+    --danger: #f87171;
+    --radius: 16px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.4;
+  }
+  .screen { display: none; min-height: 100vh; padding: 20px; padding-bottom: 32px; }
+  .screen.active { display: block; }
+  .logo {
+    text-align: center;
+    margin: 28px 0 24px;
+  }
+  .logo .snake { font-size: 48px; line-height: 1; }
+  .logo h1 {
+    font-size: 22px;
+    color: var(--accent);
+    margin-top: 8px;
+    letter-spacing: 0.5px;
+  }
+  .logo p { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .field {
+    width: 100%;
+    background: var(--card);
+    border: 1px solid #1f3320;
+    border-radius: 12px;
+    color: var(--text);
+    padding: 14px 16px;
+    font-size: 16px;
+    margin-bottom: 12px;
+    outline: none;
+  }
+  .field:focus { border-color: var(--accent); }
+  .btn {
+    width: 100%;
+    border: none;
+    border-radius: 12px;
+    padding: 14px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 6px;
+  }
+  .btn-primary { background: var(--accent); color: #052e16; }
+  .btn-primary:active { background: var(--accent-dim); }
+  .btn-ghost {
+    background: transparent;
+    color: var(--accent);
+    margin-top: 10px;
+  }
+  .btn-small {
+    width: auto;
+    padding: 8px 16px;
+    font-size: 14px;
+    background: var(--accent);
+    color: #052e16;
+    border-radius: 10px;
+    border: none;
+    font-weight: 700;
+  }
+  .status { text-align: center; color: var(--danger); font-size: 13px; min-height: 20px; margin-top: 10px; }
+  .status.ok { color: var(--accent); }
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .topbar h2 { font-size: 18px; color: var(--accent); }
+  .icon-btn {
+    background: var(--card);
+    border: none;
+    color: var(--accent);
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    font-size: 18px;
+  }
+  .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
+  .card {
+    background: var(--card);
+    border: 1px solid #1f3320;
+    border-radius: var(--radius);
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+  .card h3 { color: var(--accent); font-size: 16px; margin-bottom: 4px; }
+  .card .desc { color: var(--muted); font-size: 13px; margin-bottom: 6px; }
+  .card .meta { color: var(--muted); font-size: 12px; margin-bottom: 10px; }
+  .card .row { display: flex; justify-content: flex-end; }
+  .fab-wrap { margin-top: 8px; }
+  .empty {
+    text-align: center;
+    color: var(--muted);
+    padding: 40px 16px;
+    font-size: 14px;
+  }
+  .pattern {
+    background-image:
+      radial-gradient(circle at 20% 20%, rgba(74,222,128,0.06) 0, transparent 40%),
+      radial-gradient(circle at 80% 0%, rgba(34,197,94,0.05) 0, transparent 35%);
+  }
+</style>
+</head>
+<body class="pattern">
+  <!-- LOGIN -->
+  <div id="login" class="screen active">
+    <div class="logo">
+      <div class="snake">🐍</div>
+      <h1>Multiplayer Snake</h1>
+      <p>Minecraft PE 1.1.5</p>
+    </div>
+    <input class="field" id="login-user" placeholder="Ник" autocomplete="username">
+    <input class="field" id="login-pass" type="password" placeholder="Пароль" autocomplete="current-password">
+    <button class="btn btn-primary" onclick="doLogin()">Войти</button>
+    <button class="btn btn-ghost" onclick="show('register')">Нет аккаунта? Регистрация</button>
+    <div class="status" id="login-status"></div>
+  </div>
+
+  <!-- REGISTER -->
+  <div id="register" class="screen">
+    <div class="logo">
+      <div class="snake">🐍</div>
+      <h1>Регистрация</h1>
+    </div>
+    <input class="field" id="reg-user" placeholder="Ник">
+    <input class="field" id="reg-pass" type="password" placeholder="Пароль">
+    <input class="field" id="reg-pass2" type="password" placeholder="Повтори пароль">
+    <button class="btn btn-primary" onclick="doRegister()">Создать аккаунт</button>
+    <button class="btn btn-ghost" onclick="show('login')">Назад</button>
+    <div class="status" id="reg-status"></div>
+  </div>
+
+  <!-- WORLDS -->
+  <div id="worlds" class="screen">
+    <div class="topbar">
+      <h2>🐍 Миры</h2>
+      <div>
+        <button class="icon-btn" onclick="loadWorlds()" title="Обновить">↻</button>
+        <button class="icon-btn" onclick="logout()" title="Выйти">⎋</button>
+      </div>
+    </div>
+    <div class="subtitle" id="worlds-sub">Загрузка...</div>
+    <div id="world-list"></div>
+    <div class="fab-wrap">
+      <button class="btn btn-primary" onclick="show('host')">+ Открыть свой мир</button>
+    </div>
+  </div>
+
+  <!-- HOST -->
+  <div id="host" class="screen">
+    <div class="topbar">
+      <h2>Открыть мир</h2>
+      <button class="icon-btn" onclick="show('worlds')">←</button>
+    </div>
+    <input class="field" id="host-name" placeholder="Название мира">
+    <input class="field" id="host-desc" placeholder="Описание">
+    <input class="field" id="host-max" type="number" value="5" placeholder="Макс. игроков">
+    <button class="btn btn-primary" onclick="doHost()">🐍 Открыть мир</button>
+    <div class="status" id="host-status"></div>
+  </div>
+
+<script>
+// После деплоя бэкенда замени на свой URL Render
+const API = localStorage.getItem('api_url') || 'https://multiplayer-snake.onrender.com';
+let token = localStorage.getItem('token') || '';
+let user = null;
+
+try { user = JSON.parse(localStorage.getItem('user') || 'null'); } catch(e) {}
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if (id === 'worlds') loadWorlds();
+}
+
+function setStatus(id, text, ok) {
+  const el = document.getElementById(id);
+  el.textContent = text || '';
+  el.className = 'status' + (ok ? ' ok' : '');
+}
+
+async function api(method, path, body) {
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json' }
+  };
+  if (token) opts.headers['Authorization'] = 'Bearer ' + token;
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(API + path, opts);
+  let data = null;
+  try { data = await r.json(); } catch(e) {}
+  return { r, data };
+}
+
+function saveAuth(t, u) {
+  token = t;
+  user = u;
+  localStorage.setItem('token', t);
+  localStorage.setItem('user', JSON.stringify(u));
+}
+
+function logout() {
+  token = '';
+  user = null;
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  show('login');
+}
+
+async function doLogin() {
+  const username = document.getElementById('login-user').value.trim();
+  const password = document.getElementById('login-pass').value;
+  setStatus('login-status', 'Вход...');
+  try {
+    const { r, data } = await api('POST', '/login', { username, password });
+    if (!r.ok) {
+      setStatus('login-status', (data && data.detail) || 'Ошибка входа');
+      return;
+    }
+    saveAuth(data.access_token, data.user);
+    setStatus('login-status', '');
+    show('worlds');
+  } catch (e) {
+    setStatus('login-status', 'Нет связи с сервером');
+  }
+}
+
+async function doRegister() {
+  const username = document.getElementById('reg-user').value.trim();
+  const password = document.getElementById('reg-pass').value;
+  const password2 = document.getElementById('reg-pass2').value;
+  if (password !== password2) {
+    setStatus('reg-status', 'Пароли не совпадают');
+    return;
+  }
+  setStatus('reg-status', 'Регистрация...');
+  try {
+    const { r, data } = await api('POST', '/register', { username, password });
+    if (!r.ok) {
+      setStatus('reg-status', (data && data.detail) || 'Ошибка');
+      return;
+    }
+    saveAuth(data.access_token, data.user);
+    setStatus('reg-status', '');
+    show('worlds');
+  } catch (e) {
+    setStatus('reg-status', 'Нет связи с сервером');
+  }
+}
+
+async function loadWorlds() {
+  const list = document.getElementById('world-list');
+  const sub = document.getElementById('worlds-sub');
+  sub.textContent = 'Обновление...';
+  list.innerHTML = '';
+  try {
+    const { r, data } = await api('GET', '/worlds');
+    if (!r.ok) {
+      sub.textContent = 'Не удалось загрузить';
+      return;
+    }
+    const worlds = data || [];
+    sub.textContent = worlds.length ? ('Открытых миров: ' + worlds.length) : 'Нет открытых миров — открой свой';
+    if (!worlds.length) {
+      list.innerHTML = '<div class="empty">Пока тихо... Стань первым хостом 🐍</div>';
+      return;
+    }
+    worlds.forEach(w => {
+      const el = document.createElement('div');
+      el.className = 'card';
+      el.innerHTML =
+        '<h3>' + escapeHtml(w.name) + '</h3>' +
+        '<div class="desc">' + escapeHtml(w.description || 'Без описания') + '</div>' +
+        '<div class="meta">Хост: ' + escapeHtml(w.owner_username || '?') +
+        ' · ' + (w.player_count || 0) + '/' + (w.max_players || 5) + '</div>' +
+        '<div class="row"><button class="btn-small" data-name="' + escapeAttr(w.name) + '">Играть</button></div>';
+      el.querySelector('button').onclick = function() {
+        alert('Открой Minecraft PE 1.1.5 → Играть → Друзья / LAN\\nМир: ' + w.name + '\\n\\n(Подключение через LAN будет в следующем обновлении)');
+      };
+      list.appendChild(el);
+    });
+  } catch (e) {
+    sub.textContent = 'Нет связи с сервером';
+  }
+}
+
+async function doHost() {
+  const name = document.getElementById('host-name').value.trim();
+  const description = document.getElementById('host-desc').value.trim();
+  let max_players = parseInt(document.getElementById('host-max').value || '5', 10);
+  if (!name) {
+    setStatus('host-status', 'Введи название');
+    return;
+  }
+  if (isNaN(max_players)) max_players = 5;
+  setStatus('host-status', 'Открываем...');
+  try {
+    const { r, data } = await api('POST', '/worlds', { name, description, max_players });
+    if (!r.ok) {
+      setStatus('host-status', (data && data.detail) || 'Ошибка');
+      return;
+    }
+    setStatus('host-status', 'Мир открыт!', true);
+    setTimeout(function() { show('worlds'); }, 600);
+  } catch (e) {
+    setStatus('host-status', 'Нет связи с сервером');
+  }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function escapeAttr(s) {
+  return String(s).replace(/"/g, '&quot;');
+}
+
+if (token) show('worlds');
+</script>
+</body>
+</html>
