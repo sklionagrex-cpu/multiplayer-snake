@@ -31,16 +31,47 @@ def load_env(path=".env"):
 
 load_env()
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:pass@localhost/neondb")
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 SECRET_KEY = os.getenv("SECRET_KEY", "multiplayer-snake-secret-key-change-me-2026")
 TOKEN_DAYS = 7
 
-db_url = DATABASE_URL.replace("&channel_binding=require", "").replace("?channel_binding=require", "")
-if db_url.startswith("postgresql://") and "+pg8000" not in db_url:
-    db_url = db_url.replace("postgresql://", "postgresql+pg8000://", 1)
+def _normalize_db_url(url: str) -> str:
+    if not url:
+        return ""
+    # Neon sometimes adds channel_binding which breaks pg8000
+    url = url.replace("&channel_binding=require", "").replace("?channel_binding=require", "")
+    url = url.replace("?channel_binding=prefer", "").replace("&channel_binding=prefer", "")
+    if url.startswith("postgres://"):
+        url = "postgresql://" + url[len("postgres://"):]
+    if url.startswith("postgresql://") and "+pg8000" not in url:
+        url = url.replace("postgresql://", "postgresql+pg8000://", 1)
+    # Ensure ssl for Neon
+    if "neon.tech" in url and "sslmode=" not in url:
+        url += ("&" if "?" in url else "?") + "sslmode=require"
+    return url
 
-engine = create_engine(db_url, pool_pre_ping=True, pool_recycle=300)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+db_url = _normalize_db_url(DATABASE_URL)
+DB_OK = False
+DB_ERROR = None
+engine = None
+SessionLocal = None
+
+if not db_url:
+    DB_ERROR = "DATABASE_URL не задан в Environment на Render"
+    print("CRITICAL:", DB_ERROR)
+else:
+    try:
+        engine = create_engine(db_url, pool_pre_ping=True, pool_recycle=300, connect_args={})
+        SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+        # test connection
+        with engine.connect() as conn:
+            conn.exec_driver_sql("SELECT 1")
+        DB_OK = True
+        print("DB connected OK")
+    except Exception as e:
+        DB_ERROR = f"{type(e).__name__}: {e}"
+        print("CRITICAL DB connect failed:", DB_ERROR)
+
 Base = declarative_base()
 
 app = Flask(__name__)
@@ -72,13 +103,19 @@ class World(Base):
     owner = relationship("User", back_populates="worlds")
 
 
-try:
-    Base.metadata.create_all(bind=engine)
-except Exception as e:
-    print("Предупреждение при создании таблиц:", e)
+if engine is not None:
+    try:
+        Base.metadata.create_all(bind=engine)
+        print("Tables ensured")
+    except Exception as e:
+        print("Предупреждение при создании таблиц:", e)
+        DB_ERROR = DB_ERROR or f"create_all: {e}"
+        DB_OK = False
 
 
 def get_db():
+    if SessionLocal is None:
+        raise RuntimeError(DB_ERROR or "Database not configured")
     return SessionLocal()
 
 
@@ -179,9 +216,23 @@ def token_required(f):
 def root():
     return {
         "name": "Multiplayer Snake",
-        "version": "0.3.0",
+        "version": "0.3.1",
         "description": "Лаунчер мультиплеера для Minecraft PE 1.1.5",
+        "db_ok": DB_OK,
+        "db_error": DB_ERROR,
     }
+
+
+@app.get("/health")
+def health():
+    if not DB_OK or engine is None:
+        return jsonify({"ok": False, "db": "down", "error": DB_ERROR or "no engine"}), 503
+    try:
+        with engine.connect() as conn:
+            conn.exec_driver_sql("SELECT 1")
+        return jsonify({"ok": True, "db": "up"})
+    except Exception as e:
+        return jsonify({"ok": False, "db": "down", "error": str(e)}), 503
 
 
 @app.post("/register")
@@ -319,6 +370,17 @@ def close_world(user, db, world_id):
     finally:
         db.close()
 
+
+
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    import traceback
+    traceback.print_exc()
+    msg = str(e)
+    if DB_ERROR and ("Database" in msg or "connection" in msg.lower() or "OperationalError" in type(e).__name__ or "InterfaceError" in type(e).__name__):
+        return jsonify({"detail": f"База данных недоступна: {DB_ERROR}"}), 503
+    return jsonify({"detail": msg or type(e).__name__}), 500
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "8000"))
