@@ -1,6 +1,6 @@
 flask==3.0.3
 flask-cors==4.0.1
-sqlalchemy==2.0.36
-pg8000==1.31.2
-greenlet==3.1.1
+sqlalchemy==2.0.23
+pg8000==1.30.3
+greenlet==3.0.3
 gunicorn==21.2.0
