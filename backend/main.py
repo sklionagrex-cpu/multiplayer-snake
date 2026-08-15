@@ -607,6 +607,7 @@ def create_world(user, db):
         db.query(World).filter(World.owner_id == user.id, World.is_active == True).update(
             {"is_active": False}, synchronize_session=False
         )
+        db.flush()
         now = datetime.now(timezone.utc)
         world = World(
             name=name,
@@ -784,9 +785,14 @@ def world_presence(user, db, world_id):
             db.query(WorldPlayer).filter(
                 WorldPlayer.world_id == world_id, WorldPlayer.user_id == user.id
             ).delete(synchronize_session=False)
-            # update player_count
-            cnt = db.query(WorldPlayer).filter(WorldPlayer.world_id == world_id).count()
-            world.player_count = max(1, cnt)
+            # if host leaves — close world immediately
+            if world.owner_id == user.id:
+                world.is_active = False
+                db.query(WorldPlayer).filter(WorldPlayer.world_id == world_id).delete(synchronize_session=False)
+                world.player_count = 0
+            else:
+                cnt = db.query(WorldPlayer).filter(WorldPlayer.world_id == world_id).count()
+                world.player_count = max(0, cnt)
             db.commit()
             return jsonify({"ok": True})
 

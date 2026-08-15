@@ -25,6 +25,7 @@
   }
   .screen { display: none; min-height: 100vh; padding: 18px; padding-bottom: 88px; }
   .screen.active { display: block; }
+  .screen.profile-screen { padding: 0 0 88px; }
   .logo { text-align: center; margin: 36px 0 28px; }
   .logo-mark {
     width: 64px; height: 64px; margin: 0 auto 12px; border-radius: 18px;
@@ -32,8 +33,8 @@
     border: 1px solid var(--line);
     display: flex; align-items: center; justify-content: center;
   }
-  .logo-mark svg { width: 36px; height: 36px; }
-  .logo h1 { font-size: 22px; color: var(--accent); font-weight: 700; letter-spacing: -0.02em; }
+  .logo-mark svg { width: 36px; height: 36px; stroke: var(--accent); fill: none; stroke-width: 1.6; }
+  .logo h1 { font-size: 22px; color: var(--accent); font-weight: 700; }
   .logo p { color: var(--muted); font-size: 13px; margin-top: 4px; }
   .field {
     width: 100%; background: var(--card); border: 1px solid var(--line);
@@ -47,6 +48,7 @@
   }
   .btn-primary { background: var(--accent); color: #052e16; }
   .btn-primary:active { background: var(--accent-dim); }
+  .btn-primary:disabled { opacity: 0.55; }
   .btn-ghost { background: transparent; color: var(--accent); border: 1px solid var(--line); }
   .btn-danger { background: #2a1515; color: var(--danger); border: 1px solid #3f2020; }
   .btn-small {
@@ -71,7 +73,6 @@
     display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
   }
   .icon-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-  .icon-btn:active { background: var(--card2); color: var(--accent); }
   .icon-btn.danger { color: var(--danger); }
   .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 12px; }
   .card {
@@ -94,25 +95,22 @@
   }
   .avatar img { width: 100%; height: 100%; object-fit: cover; }
   .avatar svg { width: 22px; height: 22px; stroke: var(--accent); fill: none; stroke-width: 1.6; }
-  .avatar.lg { width: 88px; height: 88px; border-radius: 22px; margin: 0 auto; }
-  .avatar.lg svg { width: 40px; height: 40px; }
-  .user-info { flex: 1; min-width: 0; }
-  .user-info .name { font-weight: 650; font-size: 15px; }
-  .user-info .sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
-  .badge {
-    display: inline-flex; align-items: center; gap: 4px; background: #143214; color: var(--accent);
-    font-size: 11px; padding: 2px 8px; border-radius: 6px; margin-left: 6px; font-weight: 600;
-  }
   .host-dot {
     width: 6px; height: 6px; border-radius: 50%; background: var(--accent);
     animation: pulse 1.5s infinite;
   }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px; background: #143214; color: var(--accent);
+    font-size: 11px; padding: 2px 8px; border-radius: 6px; margin-left: 6px; font-weight: 600;
+  }
+  .user-info { flex: 1; min-width: 0; }
+  .user-info .name { font-weight: 650; font-size: 15px; }
+  .user-info .sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
   .nav {
     position: fixed; bottom: 0; left: 0; right: 0; background: rgba(10,18,10,.96);
     border-top: 1px solid var(--line); display: flex;
     padding: 6px 8px max(6px, env(safe-area-inset-bottom)); z-index: 50;
-    backdrop-filter: blur(12px);
   }
   .nav button {
     flex: 1; background: none; border: none; color: var(--muted);
@@ -125,7 +123,7 @@
     position: fixed; right: 16px; bottom: 78px; width: 48px; height: 48px;
     border-radius: 14px; background: var(--card); border: 1px solid var(--line);
     color: var(--accent); z-index: 60; display: none; align-items: center; justify-content: center;
-    box-shadow: 0 8px 24px rgba(0,0,0,.45);
+    box-shadow: 0 8px 24px rgba(0,0,0,.45); opacity: 0.5;
   }
   .fab.show { display: flex; }
   .fab svg { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 1.7; }
@@ -140,18 +138,38 @@
     border-top: 1px solid var(--line);
   }
   .modal h3 { color: var(--accent); margin-bottom: 12px; font-size: 17px; }
-  .photo-box {
-    text-align: center; margin: 12px 0 18px;
+  /* Telegram-like profile header */
+  .profile-cover {
+    position: relative; width: 100%; height: 220px;
+    background: linear-gradient(160deg, #1a3d1a 0%, #0d1a0d 100%);
+    overflow: hidden;
   }
-  .photo-actions { display: flex; gap: 8px; margin-top: 12px; }
-  .photo-actions .btn { margin-top: 0; }
-  input[type=file] { display: none; }
-  .hint { color: var(--muted); font-size: 12px; margin-top: 8px; line-height: 1.45; }
+  .profile-cover img {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+  }
+  .profile-cover .placeholder {
+    width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+  }
+  .profile-cover .placeholder svg { width: 72px; height: 72px; stroke: var(--accent); fill: none; stroke-width: 1.4; opacity: 0.7; }
+  .profile-cover .top-actions {
+    position: absolute; top: 12px; left: 12px; right: 12px;
+    display: flex; justify-content: flex-end; gap: 8px;
+  }
+  .profile-cover .top-actions .icon-btn {
+    background: rgba(0,0,0,.35); border-color: transparent; color: #fff; backdrop-filter: blur(6px);
+  }
+  .profile-meta {
+    padding: 16px 18px 8px; margin-top: -28px; position: relative;
+  }
+  .profile-meta .name {
+    font-size: 22px; font-weight: 700; letter-spacing: -0.02em;
+  }
+  .profile-actions { padding: 8px 18px 0; }
+  input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+  .pad { padding: 0 18px; }
 </style>
 </head>
 <body>
-
-<!-- SVG sprite helpers via inline -->
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none">
   <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 3 2.5 15 0 18M12 3c-2.5 3-2.5 15 0 18"/></symbol>
   <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a3 3 0 0 1 0 5.74"/></symbol>
@@ -192,7 +210,7 @@
 <div class="screen" id="screen-worlds">
   <div class="topbar">
     <h2>Миры</h2>
-    <button class="icon-btn" onclick="loadWorlds()" title="Обновить"><svg viewBox="0 0 24 24"><use href="#i-refresh"/></svg></button>
+    <button class="icon-btn" onclick="loadWorlds()"><svg viewBox="0 0 24 24"><use href="#i-refresh"/></svg></button>
   </div>
   <p class="subtitle" id="worlds-sub">Загрузка...</p>
   <div id="world-list"></div>
@@ -205,27 +223,27 @@
     <h2>Открыть мир</h2>
   </div>
   <input class="field" id="host-name" placeholder="Название мира">
-  <input class="field" id="host-desc" placeholder="Описание (необязательно)">
+  <input class="field" id="host-desc" placeholder="Описание">
   <input class="field" id="host-max" type="number" value="5" min="2" max="10" placeholder="Макс. игроков">
-  <button class="btn btn-primary" onclick="doHost()">Создать и открыть Minecraft</button>
+  <button class="btn btn-primary" id="btn-host" onclick="doHost()">Создать и открыть Minecraft</button>
   <div class="status" id="host-status"></div>
-  <p class="hint">После создания запустится Minecraft PE. Включи LAN в мире. Пока лаунчер шлёт heartbeat — мир виден в списке (~90 сек).</p>
 </div>
 
-<div class="screen" id="screen-profile">
-  <div class="topbar">
-    <h2>Профиль</h2>
-    <button class="icon-btn danger" onclick="doLogout()" title="Выйти"><svg viewBox="0 0 24 24"><use href="#i-logout"/></svg></button>
+<div class="screen profile-screen" id="screen-profile">
+  <div class="profile-cover" id="profile-cover">
+    <div class="placeholder"><svg viewBox="0 0 24 24"><use href="#i-user"/></svg></div>
+    <div class="top-actions">
+      <button class="icon-btn danger" onclick="doLogout()"><svg viewBox="0 0 24 24"><use href="#i-logout"/></svg></button>
+    </div>
   </div>
-  <div class="photo-box">
-    <div class="avatar lg" id="profile-avatar"><svg viewBox="0 0 24 24"><use href="#i-user"/></svg></div>
-    <div style="font-size:18px;font-weight:700;margin-top:12px" id="profile-name">—</div>
+  <div class="profile-meta">
+    <div class="name" id="profile-name">—</div>
   </div>
-  <button class="btn btn-primary" onclick="show('avatar')">Сменить фото</button>
-  <button class="btn btn-ghost" onclick="show('friends')">Друзья</button>
-  <button class="btn btn-ghost" onclick="show('blocks')">Чёрный список</button>
-  <button class="btn btn-ghost" id="btn-overlay" onclick="toggleOverlay()">Кнопка поверх Minecraft</button>
-  <p class="hint">Оверлей: маленькая кнопка поверх игры. Нажатие возвращает в лаунчер. Нужно разрешение «поверх других окон».</p>
+  <div class="profile-actions">
+    <button class="btn btn-primary" onclick="show('avatar')">Сменить фото</button>
+    <button class="btn btn-ghost" onclick="show('friends')">Друзья</button>
+    <button class="btn btn-ghost" onclick="show('blocks')">Чёрный список</button>
+  </div>
 </div>
 
 <div class="screen" id="screen-avatar">
@@ -233,17 +251,14 @@
     <button class="icon-btn" onclick="show('profile')"><svg viewBox="0 0 24 24"><use href="#i-back"/></svg></button>
     <h2>Фото профиля</h2>
   </div>
-  <div class="photo-box">
-    <div class="avatar lg" id="avatar-preview"><svg viewBox="0 0 24 24"><use href="#i-camera"/></svg></div>
+  <div class="profile-cover" id="avatar-preview" style="border-radius:16px;height:200px;margin-bottom:14px">
+    <div class="placeholder"><svg viewBox="0 0 24 24"><use href="#i-camera"/></svg></div>
   </div>
-  <input type="file" id="avatar-file" accept="image/*" onchange="onPickPhoto(event)">
-  <div class="photo-actions">
-    <button class="btn btn-primary" onclick="document.getElementById('avatar-file').click()">Выбрать фото</button>
-    <button class="btn btn-ghost" onclick="clearPhoto()">Сбросить</button>
-  </div>
-  <button class="btn btn-primary" style="margin-top:14px" onclick="savePhoto()">Сохранить</button>
+  <input type="file" id="avatar-file" accept="image/*" capture="environment">
+  <button class="btn btn-primary" onclick="pickPhoto()">Выбрать фото</button>
+  <button class="btn btn-ghost" onclick="clearPhoto()">Сбросить</button>
+  <button class="btn btn-primary" onclick="savePhoto()">Сохранить</button>
   <div class="status" id="avatar-status"></div>
-  <p class="hint">Фото сожмётся автоматически. Максимум ~300 КБ.</p>
 </div>
 
 <div class="screen" id="screen-friends">
@@ -262,25 +277,16 @@
     <button class="icon-btn" onclick="show('profile')"><svg viewBox="0 0 24 24"><use href="#i-back"/></svg></button>
     <h2>Чёрный список</h2>
   </div>
-  <p class="subtitle">Эти игроки не смогут зайти на твои миры</p>
   <div id="block-list"></div>
 </div>
 
 <div class="nav" id="main-nav" style="display:none">
-  <button id="nav-worlds" onclick="show('worlds')">
-    <svg viewBox="0 0 24 24"><use href="#i-globe"/></svg>Миры
-  </button>
-  <button id="nav-friends" onclick="show('friends')">
-    <svg viewBox="0 0 24 24"><use href="#i-users"/></svg>Друзья
-  </button>
-  <button id="nav-profile" onclick="show('profile')">
-    <svg viewBox="0 0 24 24"><use href="#i-user"/></svg>Профиль
-  </button>
+  <button id="nav-worlds" onclick="show('worlds')"><svg viewBox="0 0 24 24"><use href="#i-globe"/></svg>Миры</button>
+  <button id="nav-friends" onclick="show('friends')"><svg viewBox="0 0 24 24"><use href="#i-users"/></svg>Друзья</button>
+  <button id="nav-profile" onclick="show('profile')"><svg viewBox="0 0 24 24"><use href="#i-user"/></svg>Профиль</button>
 </div>
 
-<button class="fab" id="fab-snake" onclick="openServersModal()" title="Серверы">
-  <svg viewBox="0 0 24 24"><use href="#i-snake"/></svg>
-</button>
+<button class="fab" id="fab-snake" onclick="openServersModal()"><svg viewBox="0 0 24 24"><use href="#i-snake"/></svg></button>
 
 <div class="modal-bg" id="modal-servers" onclick="if(event.target===this)closeModals()">
   <div class="modal">
@@ -293,7 +299,7 @@
 <div class="modal-bg" id="modal-host-panel" onclick="if(event.target===this)closeModals()">
   <div class="modal">
     <h3 id="panel-title">Игроки в мире</h3>
-    <p class="subtitle">Твой отклик (LAN): <b id="host-ping">—</b> мс</p>
+    <p class="subtitle">Отклик: <b id="host-ping">—</b> мс</p>
     <div id="host-players"></div>
     <button class="btn btn-danger" id="btn-stop-host" style="margin-top:12px;display:none" onclick="stopHosting()">Остановить хост</button>
     <button class="btn btn-ghost" onclick="closeModals()">Закрыть</button>
@@ -311,6 +317,7 @@ let heartbeatTimer = null;
 let presenceTimer = null;
 let searchTimer = null;
 let lastLanRtt = 0;
+let hostBusy = false;
 
 try { user = JSON.parse(localStorage.getItem('user') || 'null'); } catch(e) {}
 
@@ -347,7 +354,8 @@ function saveAuth(t, u) {
 }
 
 function doLogout() {
-  token = ''; user = null; myWorldId = null; joinedWorldId = null; stopHeartbeat(); stopPresence();
+  token = ''; user = null; myWorldId = null; joinedWorldId = null;
+  stopHeartbeat(); stopPresence();
   try { if (window.AndroidBridge) AndroidBridge.stopOverlay(); } catch(e) {}
   localStorage.removeItem('token'); localStorage.removeItem('user');
   show('login');
@@ -363,15 +371,12 @@ async function api(method, path, body) {
   return { r, data };
 }
 
-
 async function measureLanRtt() {
   const t0 = performance.now();
   try {
-    await fetch(API + "/health", { cache: "no-store" });
+    await fetch(API + '/health', { cache: 'no-store' });
     lastLanRtt = Math.max(1, Math.round(performance.now() - t0));
-  } catch (e) {
-    lastLanRtt = lastLanRtt || 999;
-  }
+  } catch (e) { lastLanRtt = lastLanRtt || 999; }
   return lastLanRtt;
 }
 
@@ -381,12 +386,7 @@ function startPresence(worldId, isHost) {
   if (isHost) myWorldId = worldId;
   const tick = async () => {
     const rtt = await measureLanRtt();
-    try {
-      await api("POST", "/worlds/" + worldId + "/presence", {
-        action: "heartbeat",
-        rtt_ms: rtt
-      });
-    } catch (e) {}
+    try { await api('POST', '/worlds/' + worldId + '/presence', { action: 'heartbeat', rtt_ms: rtt }); } catch (e) {}
   };
   tick();
   presenceTimer = setInterval(tick, 8000);
@@ -396,49 +396,24 @@ function stopPresence() {
   if (presenceTimer) clearInterval(presenceTimer);
   presenceTimer = null;
   if (joinedWorldId) {
-    api("POST", "/worlds/" + joinedWorldId + "/presence", { action: "leave" }).catch(()=>{});
+    api('POST', '/worlds/' + joinedWorldId + '/presence', { action: 'leave' }).catch(()=>{});
   }
-  if (!myWorldId) joinedWorldId = null;
 }
 
 function launchMinecraft() {
   try {
     if (window.AndroidBridge && AndroidBridge.launchMinecraft) {
       AndroidBridge.launchMinecraft();
-      // start overlay after short delay
-      setTimeout(() => {
-        try { AndroidBridge.startOverlay(); } catch(e) {}
-      }, 800);
+      setTimeout(() => { try { AndroidBridge.startOverlay(); } catch(e) {} }, 600);
       return;
     }
   } catch(e) {}
-  alert('Запуск Minecraft доступен только в APK. Убедись, что Minecraft PE установлен.');
-}
-
-function toggleOverlay() {
-  try {
-    if (!window.AndroidBridge) {
-      alert('Оверлей только в Android APK');
-      return;
-    }
-    if (!AndroidBridge.hasOverlayPermission()) {
-      AndroidBridge.startOverlay(); // opens settings
-      return;
-    }
-    AndroidBridge.startOverlay();
-    alert('Оверлей включён. Кнопка появится поверх Minecraft.');
-  } catch(e) {
-    alert('Не удалось включить оверлей');
-  }
 }
 
 function setAvatarEl(el, u) {
   if (!el) return;
-  if (u && u.avatar_url) {
-    el.innerHTML = '<img alt="" src="' + u.avatar_url + '">';
-  } else {
-    el.innerHTML = '<svg viewBox="0 0 24 24"><use href="#i-user"/></svg>';
-  }
+  if (u && u.avatar_url) el.innerHTML = '<img alt="" src="' + u.avatar_url + '">';
+  else el.innerHTML = '<svg viewBox="0 0 24 24"><use href="#i-user"/></svg>';
 }
 
 function escapeHtml(s) {
@@ -490,7 +465,7 @@ async function loadWorlds() {
       el.className = 'card';
       el.innerHTML =
         '<h3>' + escapeHtml(w.name) + '</h3>' +
-        '<div class="desc">' + escapeHtml(w.description || 'Без описания') + '</div>' +
+        '<div class="desc">' + escapeHtml(w.description || '') + '</div>' +
         '<div class="meta"><span class="host-dot"></span>' + escapeHtml(w.owner_username || '?') +
         ' · ' + (w.player_count || 0) + '/' + (w.max_players || 5) + '</div>' +
         '<div class="row"><button class="btn-small">Играть</button></div>';
@@ -510,21 +485,35 @@ async function joinWorld(w) {
 }
 
 async function doHost() {
+  if (hostBusy) return;
   const name = document.getElementById('host-name').value.trim();
   const description = document.getElementById('host-desc').value.trim();
   let max_players = parseInt(document.getElementById('host-max').value || '5', 10);
   if (!name) { setStatus('host-status', 'Введи название'); return; }
   if (isNaN(max_players)) max_players = 5;
+  hostBusy = true;
+  const btn = document.getElementById('btn-host');
+  if (btn) btn.disabled = true;
   setStatus('host-status', 'Открываем...');
   try {
+    // close previous host world first if any
+    if (myWorldId) {
+      try { await api('DELETE', '/worlds/' + myWorldId); } catch(e) {}
+      myWorldId = null;
+    }
     const { r, data } = await api('POST', '/worlds', { name, description, max_players });
     if (!r.ok) { setStatus('host-status', (data && data.detail) || 'Ошибка'); return; }
     myWorldId = data.id;
-    setStatus('host-status', 'Мир открыт, запуск Minecraft...', true);
+    setStatus('host-status', 'Готово', true);
     startHeartbeat();
     startPresence(data.id, true);
-    setTimeout(launchMinecraft, 300);
-  } catch (e) { setStatus('host-status', 'Нет связи с сервером'); }
+    setTimeout(launchMinecraft, 250);
+  } catch (e) {
+    setStatus('host-status', 'Нет связи с сервером');
+  } finally {
+    hostBusy = false;
+    if (btn) btn.disabled = false;
+  }
 }
 
 function startHeartbeat() {
@@ -532,7 +521,7 @@ function startHeartbeat() {
   if (!myWorldId) return;
   const beat = () => api('POST', '/worlds/' + myWorldId + '/heartbeat', { player_count: 1 }).catch(()=>{});
   beat();
-  heartbeatTimer = setInterval(beat, 30000);
+  heartbeatTimer = setInterval(beat, 25000);
 }
 function stopHeartbeat() {
   if (heartbeatTimer) clearInterval(heartbeatTimer);
@@ -542,55 +531,67 @@ function stopHeartbeat() {
 function renderProfile() {
   if (!user) return;
   document.getElementById('profile-name').textContent = user.username;
-  setAvatarEl(document.getElementById('profile-avatar'), user);
+  const cover = document.getElementById('profile-cover');
+  const actions = cover.querySelector('.top-actions');
+  if (user.avatar_url) {
+    cover.innerHTML = '<img alt="" src="' + user.avatar_url + '">';
+  } else {
+    cover.innerHTML = '<div class="placeholder"><svg viewBox="0 0 24 24"><use href="#i-user"/></svg></div>';
+  }
+  const bar = document.createElement('div');
+  bar.className = 'top-actions';
+  bar.innerHTML = '<button class="icon-btn danger" onclick="doLogout()"><svg viewBox="0 0 24 24"><use href="#i-logout"/></svg></button>';
+  cover.appendChild(bar);
 }
 
 function renderAvatarPreview() {
   pendingPhoto = user && user.avatar_url ? user.avatar_url : null;
   const el = document.getElementById('avatar-preview');
   if (pendingPhoto) el.innerHTML = '<img alt="" src="' + pendingPhoto + '">';
-  else el.innerHTML = '<svg viewBox="0 0 24 24"><use href="#i-camera"/></svg>';
+  else el.innerHTML = '<div class="placeholder"><svg viewBox="0 0 24 24"><use href="#i-camera"/></svg></div>';
 }
 
-function onPickPhoto(ev) {
+function pickPhoto() {
+  document.getElementById('avatar-file').click();
+}
+
+document.getElementById('avatar-file').addEventListener('change', function(ev) {
   const file = ev.target.files && ev.target.files[0];
   if (!file) return;
   const reader = new FileReader();
   reader.onload = () => {
     const img = new Image();
     img.onload = () => {
-      const max = 256;
+      const max = 512;
       let w = img.width, h = img.height;
       if (w > h) { if (w > max) { h = h * max / w; w = max; } }
       else { if (h > max) { w = w * max / h; h = max; } }
       const canvas = document.createElement('canvas');
       canvas.width = Math.round(w); canvas.height = Math.round(h);
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      pendingPhoto = canvas.toDataURL('image/jpeg', 0.72);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      pendingPhoto = canvas.toDataURL('image/jpeg', 0.78);
       document.getElementById('avatar-preview').innerHTML = '<img alt="" src="' + pendingPhoto + '">';
     };
     img.src = reader.result;
   };
   reader.readAsDataURL(file);
-}
+});
 
 function clearPhoto() {
   pendingPhoto = null;
-  document.getElementById('avatar-preview').innerHTML = '<svg viewBox="0 0 24 24"><use href="#i-camera"/></svg>';
+  document.getElementById('avatar-preview').innerHTML = '<div class="placeholder"><svg viewBox="0 0 24 24"><use href="#i-camera"/></svg></div>';
   document.getElementById('avatar-file').value = '';
 }
 
 async function savePhoto() {
   setStatus('avatar-status', 'Сохранение...');
   try {
-    const body = { avatar_data: pendingPhoto || '' };
-    const { r, data } = await api('PATCH', '/me', body);
+    const { r, data } = await api('PATCH', '/me', { avatar_data: pendingPhoto || '' });
     if (!r.ok) { setStatus('avatar-status', (data && data.detail) || 'Ошибка'); return; }
     user = data;
     localStorage.setItem('user', JSON.stringify(user));
     setStatus('avatar-status', 'Сохранено', true);
-    setTimeout(() => show('profile'), 400);
+    setTimeout(() => show('profile'), 350);
   } catch (e) { setStatus('avatar-status', 'Нет связи'); }
 }
 
@@ -601,20 +602,16 @@ async function loadFriends() {
     const { r, data } = await api('GET', '/friends');
     if (!r.ok) { list.innerHTML = '<div class="empty">Ошибка</div>'; return; }
     const friends = data || [];
-    if (!friends.length) { list.innerHTML = '<div class="empty">Нет друзей — найди по нику сверху</div>'; return; }
+    if (!friends.length) { list.innerHTML = '<div class="empty">Нет друзей</div>'; return; }
     list.innerHTML = '';
     friends.forEach(f => {
       const row = document.createElement('div');
       row.className = 'user-row';
-      const av = document.createElement('div');
-      av.className = 'avatar';
-      setAvatarEl(av, f);
-      row.appendChild(av);
-      const info = document.createElement('div');
-      info.className = 'user-info';
+      const av = document.createElement('div'); av.className = 'avatar'; setAvatarEl(av, f); row.appendChild(av);
+      const info = document.createElement('div'); info.className = 'user-info';
       info.innerHTML = '<div class="name">' + escapeHtml(f.username) +
         (f.hosting ? '<span class="badge"><span class="host-dot"></span>хост</span>' : '') +
-        '</div><div class="sub">' + (f.hosting ? escapeHtml(f.hosting.name) : 'не хостит') + '</div>';
+        '</div><div class="sub">' + (f.hosting ? escapeHtml(f.hosting.name) : '') + '</div>';
       row.appendChild(info);
       const actions = document.createElement('div');
       if (f.hosting) {
@@ -700,10 +697,7 @@ function closeModals() {
 
 async function openServersModal() {
   const wid = myWorldId || joinedWorldId;
-  if (wid) {
-    await openPlayerPanel(wid);
-    return;
-  }
+  if (wid) { await openPlayerPanel(wid); return; }
   const list = document.getElementById('modal-server-list');
   list.innerHTML = '<div class="empty">Загрузка...</div>';
   document.getElementById('modal-servers').classList.add('show');
@@ -726,8 +720,7 @@ async function openServersModal() {
 
 async function openPlayerPanel(worldId) {
   document.getElementById('modal-host-panel').classList.add('show');
-  const rtt = await measureLanRtt();
-  document.getElementById('host-ping').textContent = String(rtt);
+  document.getElementById('host-ping').textContent = String(await measureLanRtt());
   const box = document.getElementById('host-players');
   box.innerHTML = '<div class="empty">Загрузка...</div>';
   const stopBtn = document.getElementById('btn-stop-host');
@@ -745,9 +738,8 @@ async function openPlayerPanel(worldId) {
       row.className = 'user-row';
       const av = document.createElement('div'); av.className = 'avatar'; setAvatarEl(av, p); row.appendChild(av);
       const info = document.createElement('div'); info.className = 'user-info';
-      const tag = p.is_host ? ' · хост' : '';
       info.innerHTML = '<div class="name">' + escapeHtml(p.username) + (p.id === (user && user.id) ? ' (вы)' : '') +
-        '</div><div class="sub">пинг ' + (p.rtt_ms || 0) + ' мс' + tag + '</div>';
+        '</div><div class="sub">' + (p.rtt_ms || 0) + ' мс' + (p.is_host ? ' · хост' : '') + '</div>';
       row.appendChild(info);
       const actions = document.createElement('div');
       if (p.id !== (user && user.id)) {
@@ -758,40 +750,40 @@ async function openPlayerPanel(worldId) {
         if (isOwner && !p.is_host) {
           const kick = document.createElement('button');
           kick.className = 'btn-tiny'; kick.textContent = 'Кик'; kick.style.marginLeft = '4px';
-          kick.onclick = async () => {
-            await api('POST', '/worlds/' + worldId + '/kick', { user_id: p.id });
-            alert('Кик отправлен (игрок должен переподключиться)');
-          };
+          kick.onclick = async () => { await api('POST', '/worlds/' + worldId + '/kick', { user_id: p.id }); };
           actions.appendChild(kick);
           const ban = document.createElement('button');
           ban.className = 'btn-tiny'; ban.textContent = 'Бан'; ban.style.marginLeft = '4px'; ban.style.color = 'var(--danger)';
-          ban.onclick = async () => {
-            await api('POST', '/worlds/' + worldId + '/ban', { user_id: p.id });
-            openPlayerPanel(worldId);
-          };
+          ban.onclick = async () => { await api('POST', '/worlds/' + worldId + '/ban', { user_id: p.id }); openPlayerPanel(worldId); };
           actions.appendChild(ban);
         }
       }
       row.appendChild(actions);
       box.appendChild(row);
     });
-  } catch (e) {
-    box.innerHTML = '<div class="empty">Нет связи</div>';
-  }
+  } catch (e) { box.innerHTML = '<div class="empty">Нет связи</div>'; }
 }
 
 async function stopHosting() {
+  const wid = myWorldId;
   stopPresence();
-  if (myWorldId) {
-    try { await api('DELETE', '/worlds/' + myWorldId); } catch(e) {}
+  stopHeartbeat();
+  if (wid) {
+    try { await api('DELETE', '/worlds/' + wid); } catch(e) {}
   }
   myWorldId = null;
   joinedWorldId = null;
-  stopHeartbeat();
+  try { if (window.AndroidBridge) AndroidBridge.stopOverlay(); } catch(e) {}
   closeModals();
   show('worlds');
 }
 
+// When app resumes / visibility — if host left, close world immediately path is stopHosting
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    if (myWorldId || joinedWorldId) loadWorlds();
+  }
+});
 
 if (token && user) show('worlds');
 else show('login');

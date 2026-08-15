@@ -1,6 +1,7 @@
 package com.snake.mcpe;
 
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
@@ -9,6 +10,8 @@ import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.webkit.JavascriptInterface;
+import android.webkit.ValueCallback;
+import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -18,6 +21,8 @@ import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
     private WebView webView;
+    private ValueCallback<Uri[]> filePathCallback;
+    private static final int FILE_CHOOSER_REQUEST = 1001;
 
     private static final String[] MC_PACKAGES = {
         "com.mojang.minecraftpe",
@@ -32,8 +37,7 @@ public class MainActivity extends AppCompatActivity {
             runOnUiThread(() -> {
                 if (tryLaunchMinecraft()) return;
                 Toast.makeText(MainActivity.this,
-                    "Minecraft PE не найден. Установите Minecraft PE 1.1.5",
-                    Toast.LENGTH_LONG).show();
+                    "Minecraft PE не найден", Toast.LENGTH_LONG).show();
             });
         }
 
@@ -85,7 +89,6 @@ public class MainActivity extends AppCompatActivity {
                 } catch (Exception ignored) {}
             }
         }
-        // Scan installed apps for "minecraft"
         try {
             List<ApplicationInfo> apps = pm.getInstalledApplications(PackageManager.GET_META_DATA);
             for (ApplicationInfo app : apps) {
@@ -116,11 +119,45 @@ public class MainActivity extends AppCompatActivity {
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
         s.setAllowFileAccess(true);
+        s.setAllowContentAccess(true);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
 
         webView.addJavascriptInterface(new Bridge(), "AndroidBridge");
         webView.setWebViewClient(new WebViewClient());
+        webView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> callback,
+                                             FileChooserParams fileChooserParams) {
+                if (filePathCallback != null) {
+                    filePathCallback.onReceiveValue(null);
+                }
+                filePathCallback = callback;
+                Intent intent = fileChooserParams.createIntent();
+                try {
+                    startActivityForResult(intent, FILE_CHOOSER_REQUEST);
+                } catch (Exception e) {
+                    filePathCallback = null;
+                    Toast.makeText(MainActivity.this, "Не удалось открыть галерею", Toast.LENGTH_SHORT).show();
+                    return false;
+                }
+                return true;
+            }
+        });
         webView.loadUrl("file:///android_asset/index.html");
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == FILE_CHOOSER_REQUEST) {
+            if (filePathCallback == null) return;
+            Uri[] result = null;
+            if (resultCode == Activity.RESULT_OK && data != null) {
+                result = WebChromeClient.FileChooserParams.parseResult(resultCode, data);
+            }
+            filePathCallback.onReceiveValue(result);
+            filePathCallback = null;
+        }
     }
 
     @Override

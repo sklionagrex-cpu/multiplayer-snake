@@ -6,7 +6,6 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
-import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.os.Build;
 import android.os.IBinder;
@@ -34,12 +33,13 @@ public class OverlayService extends Service {
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
         ImageView btn = new ImageView(this);
         btn.setImageResource(R.mipmap.ic_launcher);
-        btn.setBackgroundColor(Color.TRANSPARENT);
-        btn.setPadding(8, 8, 8, 8);
-        btn.setAlpha(0.85f);
+        btn.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        btn.setAlpha(0.5f);
+        btn.setClipToOutline(true);
 
-        int size = (int) (48 * getResources().getDisplayMetrics().density);
-        WindowManager.LayoutParams params = new WindowManager.LayoutParams(
+        float density = getResources().getDisplayMetrics().density;
+        int size = (int) (48 * density);
+        final WindowManager.LayoutParams params = new WindowManager.LayoutParams(
             size, size,
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
                 ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -51,6 +51,8 @@ public class OverlayService extends Service {
         params.gravity = Gravity.TOP | Gravity.END;
         params.x = 24;
         params.y = 180;
+
+        final int screenH = getResources().getDisplayMetrics().heightPixels;
 
         btn.setOnTouchListener(new View.OnTouchListener() {
             private int initialX, initialY;
@@ -67,18 +69,27 @@ public class OverlayService extends Service {
                         touchY = event.getRawY();
                         moved = false;
                         return true;
-                    case MotionEvent.ACTION_MOVE:
+                    case MotionEvent.ACTION_MOVE: {
                         float dx = event.getRawX() - touchX;
                         float dy = event.getRawY() - touchY;
                         if (Math.abs(dx) > 8 || Math.abs(dy) > 8) moved = true;
                         params.x = initialX - (int) dx;
                         params.y = initialY + (int) dy;
-                        windowManager.updateViewLayout(overlayView, params);
+                        // fade more when near bottom
+                        float progress = Math.min(1f, Math.max(0f, (float) params.y / (screenH * 0.75f)));
+                        v.setAlpha(0.5f * (1f - progress * 0.7f));
+                        try { windowManager.updateViewLayout(overlayView, params); } catch (Exception ignored) {}
                         return true;
+                    }
                     case MotionEvent.ACTION_UP:
+                        // swipe down far enough -> dismiss
+                        if (params.y > screenH * 0.72f) {
+                            stopSelf();
+                            return true;
+                        }
+                        v.setAlpha(0.5f);
                         if (!moved) {
-                            Intent i = getPackageManager()
-                                .getLaunchIntentForPackage(getPackageName());
+                            Intent i = getPackageManager().getLaunchIntentForPackage(getPackageName());
                             if (i != null) {
                                 i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
                                     | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
@@ -116,8 +127,8 @@ public class OverlayService extends Service {
             PendingIntent.FLAG_IMMUTABLE);
         return new NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Multiplayer Snake")
-            .setContentText("Кнопка поверх Minecraft")
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentText("Потяни кнопку вниз, чтобы скрыть")
+            .setSmallIcon(android.R.drawable.ic_menu_compass)
             .setContentIntent(pi)
             .setOngoing(true)
             .build();
