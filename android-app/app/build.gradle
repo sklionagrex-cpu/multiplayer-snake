@@ -1,9 +1,9 @@
 plugins {
-    id 'com.android.application'
+    id "com.android.application"
 }
 
 android {
-    namespace 'com.snake.mcpe'
+    namespace "com.snake.mcpe"
     compileSdk 34
 
     defaultConfig {
@@ -11,17 +11,18 @@ android {
         minSdk 24
         targetSdk 34
         versionCode 1
-        versionName "0.4.0"
+        versionName "0.4.1"
     }
 
     buildTypes {
-        release {
-            minifyEnabled false
-        }
         debug {
             minifyEnabled false
         }
+        release {
+            minifyEnabled false
+        }
     }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
@@ -29,5 +30,5 @@ android {
 }
 
 dependencies {
-    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation "androidx.appcompat:appcompat:1.6.1"
 }
