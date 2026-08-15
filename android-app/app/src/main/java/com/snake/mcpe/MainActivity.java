@@ -2,7 +2,9 @@ package com.snake.mcpe;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.net.Uri;
@@ -23,6 +25,7 @@ public class MainActivity extends AppCompatActivity {
     private WebView webView;
     private ValueCallback<Uri[]> filePathCallback;
     private static final int FILE_CHOOSER_REQUEST = 1001;
+    private static final String PREFS = "snake_prefs";
 
     private static final String[] MC_PACKAGES = {
         "com.mojang.minecraftpe",
@@ -33,11 +36,23 @@ public class MainActivity extends AppCompatActivity {
 
     public class Bridge {
         @JavascriptInterface
+        public void saveSession(String token, String apiUrl) {
+            SharedPreferences.Editor ed = getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit();
+            if (token != null) ed.putString("token", token);
+            if (apiUrl != null && apiUrl.length() > 0) ed.putString("api_url", apiUrl);
+            ed.apply();
+        }
+
+        @JavascriptInterface
+        public void clearSession() {
+            getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().apply();
+        }
+
+        @JavascriptInterface
         public void launchMinecraft() {
             runOnUiThread(() -> {
                 if (tryLaunchMinecraft()) return;
-                Toast.makeText(MainActivity.this,
-                    "Minecraft PE не найден", Toast.LENGTH_LONG).show();
+                Toast.makeText(MainActivity.this, "Minecraft PE не найден", Toast.LENGTH_LONG).show();
             });
         }
 
@@ -66,6 +81,20 @@ public class MainActivity extends AppCompatActivity {
         public void stopOverlay() {
             runOnUiThread(() ->
                 stopService(new Intent(MainActivity.this, OverlayService.class)));
+        }
+
+        @JavascriptInterface
+        public void openHostPanel(int worldId) {
+            runOnUiThread(() -> {
+                Intent svc = new Intent(MainActivity.this, OverlayService.class);
+                svc.setAction("HOST_PANEL");
+                svc.putExtra("world_id", worldId);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    startForegroundService(svc);
+                } else {
+                    startService(svc);
+                }
+            });
         }
 
         @JavascriptInterface
@@ -132,9 +161,11 @@ public class MainActivity extends AppCompatActivity {
                     filePathCallback.onReceiveValue(null);
                 }
                 filePathCallback = callback;
-                Intent intent = fileChooserParams.createIntent();
+                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                intent.setType("image/*");
                 try {
-                    startActivityForResult(intent, FILE_CHOOSER_REQUEST);
+                    startActivityForResult(Intent.createChooser(intent, "Фото"), FILE_CHOOSER_REQUEST);
                 } catch (Exception e) {
                     filePathCallback = null;
                     Toast.makeText(MainActivity.this, "Не удалось открыть галерею", Toast.LENGTH_SHORT).show();

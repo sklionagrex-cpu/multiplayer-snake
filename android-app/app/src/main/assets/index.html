@@ -183,7 +183,7 @@
 
 <div class="screen active" id="screen-login">
   <div class="logo">
-    <div class="logo-mark"><svg viewBox="0 0 24 24"><use href="#i-snake"/></svg></div>
+    <img src="logo.png" alt="" style="width:72px;height:72px;border-radius:18px;display:block;margin:0 auto 12px;object-fit:cover">
     <h1>Multiplayer Snake</h1>
     <p>Minecraft PE 1.1.5</p>
   </div>
@@ -196,7 +196,7 @@
 
 <div class="screen" id="screen-register">
   <div class="logo">
-    <div class="logo-mark"><svg viewBox="0 0 24 24"><use href="#i-snake"/></svg></div>
+    <img src="logo.png" alt="" style="width:72px;height:72px;border-radius:18px;display:block;margin:0 auto 12px;object-fit:cover">
     <h1>Регистрация</h1>
   </div>
   <input class="field" id="reg-user" placeholder="Ник (мин. 3)">
@@ -353,12 +353,22 @@ function saveAuth(t, u) {
   token = t; user = u;
   localStorage.setItem('token', t);
   localStorage.setItem('user', JSON.stringify(u));
+  try {
+    if (window.AndroidBridge && AndroidBridge.saveSession) {
+      AndroidBridge.saveSession(t, API);
+    }
+  } catch (e) {}
 }
 
 function doLogout() {
   token = ''; user = null; myWorldId = null; joinedWorldId = null;
   stopHeartbeat(); stopPresence();
-  try { if (window.AndroidBridge) AndroidBridge.stopOverlay(); } catch(e) {}
+  try {
+    if (window.AndroidBridge) {
+      AndroidBridge.stopOverlay();
+      if (AndroidBridge.clearSession) AndroidBridge.clearSession();
+    }
+  } catch(e) {}
   localStorage.removeItem('token'); localStorage.removeItem('user');
   show('login');
 }
@@ -509,6 +519,11 @@ async function doHost() {
     setStatus('host-status', 'Готово', true);
     startHeartbeat();
     startPresence(data.id, true);
+    try {
+      if (window.AndroidBridge && AndroidBridge.openHostPanel) {
+        // panel available via overlay after MC starts
+      }
+    } catch(e) {}
     setTimeout(launchMinecraft, 250);
   } catch (e) {
     setStatus('host-status', 'Нет связи с сервером');
@@ -813,17 +828,8 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-// Overlay mode: open servers/player panel immediately
-const params = new URLSearchParams(location.search);
-const overlayMode = params.get('mode') === 'overlay';
-if (overlayMode) {
-  if (token && user) {
-    show('worlds');
-    setTimeout(function() { openServersModal(); }, 200);
-  } else {
-    show('login');
-  }
-} else if (token && user) {
+if (token && user) {
+  try { if (window.AndroidBridge && AndroidBridge.saveSession) AndroidBridge.saveSession(token, API); } catch(e) {}
   show('worlds');
 } else {
   show('login');
