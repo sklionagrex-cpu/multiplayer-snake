@@ -37,7 +37,7 @@ load_env()
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 SECRET_KEY = os.getenv("SECRET_KEY", "multiplayer-snake-secret-key-change-me-2026")
 TOKEN_DAYS = 7
-HOST_TIMEOUT_SEC = 90  # world disappears if no heartbeat
+HOST_TIMEOUT_SEC = 30  # world disappears if no heartbeat
 PLAYER_TIMEOUT_SEC = 45  # player leaves list if no presence
 
 AVATARS = [
