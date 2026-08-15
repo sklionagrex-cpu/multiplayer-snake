@@ -257,6 +257,35 @@ public class OverlayService extends Service {
         return b;
     }
 
+
+    /** Prefer live API: if I host → host panel, else servers list. */
+    private void openCorrectPanel(final int screenW) {
+        toast("Загрузка…");
+        new Thread(() -> {
+            int hostId = 0;
+            try {
+                String json = httpGet("/worlds/mine");
+                org.json.JSONObject obj = new org.json.JSONObject(json);
+                if (!obj.isNull("world")) {
+                    org.json.JSONObject w = obj.getJSONObject("world");
+                    hostId = w.optInt("id", 0);
+                    if (hostId > 0) {
+                        prefs().edit().putInt("hosting_world_id", hostId).apply();
+                    }
+                } else {
+                    prefs().edit().putInt("hosting_world_id", 0).apply();
+                }
+            } catch (Exception e) {
+                hostId = prefs().getInt("hosting_world_id", 0);
+            }
+            final int wid = hostId;
+            handler.post(() -> {
+                if (wid > 0) showHostPanel(screenW, wid);
+                else showServersModal(screenW);
+            });
+        }).start();
+    }
+
     private void showServersModal(int screenW) {
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
