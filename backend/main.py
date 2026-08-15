@@ -256,6 +256,7 @@ def user_to_dict(u, extra=None):
         "avatar": u.avatar or "snake_green",
         "avatar_url": u.avatar_data if getattr(u, "avatar_data", None) else None,
         "created_at": u.created_at.isoformat() if u.created_at else None,
+        "is_admin": (u.username or "").lower() == "admin",
     }
     if extra:
         d.update(extra)
@@ -295,6 +296,11 @@ def token_required(f):
         if not user:
             db.close()
             return jsonify({"detail": "Пользователь не найден"}), 401
+        try:
+            user.last_seen = datetime.now(timezone.utc)
+            db.commit()
+        except Exception:
+            db.rollback()
         return f(user, db, *args, **kwargs)
     return decorated
 
@@ -312,7 +318,7 @@ def deactivate_stale_worlds(db):
 def root():
     return {
         "name": "Multiplayer Snake",
-        "version": "0.4.1",
+        "version": "0.4.2",
         "description": "Лаунчер мультиплеера для Minecraft PE 1.1.5",
         "db_ok": DB_OK,
         "db_error": DB_ERROR,
@@ -329,6 +335,48 @@ def health():
         return jsonify({"ok": True, "db": "up"})
     except Exception as e:
         return jsonify({"ok": False, "db": "down", "error": str(e)}), 503
+
+
+
+ONLINE_SEC = 120  # online if last_seen within 2 minutes
+
+
+@app.get("/admin/stats")
+@token_required
+def admin_stats(user, db):
+    if (user.username or "").lower() != "admin":
+        db.close()
+        return jsonify({"detail": "Нет доступа"}), 403
+    try:
+        total = db.query(User).count()
+        cutoff = datetime.now(timezone.utc) - timedelta(seconds=ONLINE_SEC)
+        online = (
+            db.query(User)
+            .filter(User.last_seen != None, User.last_seen >= cutoff)
+            .count()
+        )
+        # Also count players currently in worlds
+        player_cutoff = datetime.now(timezone.utc) - timedelta(seconds=PLAYER_TIMEOUT_SEC)
+        in_worlds = (
+            db.query(WorldPlayer.user_id)
+            .filter(WorldPlayer.last_seen >= player_cutoff)
+            .distinct()
+            .count()
+        )
+        active_worlds = (
+            db.query(World)
+            .filter(World.is_active == True)
+            .count()
+        )
+        return jsonify({
+            "total_users": total,
+            "online": online,
+            "in_worlds": in_worlds,
+            "active_worlds": active_worlds,
+            "online_window_sec": ONLINE_SEC,
+        })
+    finally:
+        db.close()
 
 
 @app.get("/avatars")

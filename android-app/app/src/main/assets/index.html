@@ -250,6 +250,7 @@
     <button class="btn btn-primary" onclick="show('avatar')">Сменить фото</button>
     <button class="btn btn-ghost" onclick="show('friends')">Друзья</button>
     <button class="btn btn-ghost" onclick="show('blocks')">Чёрный список</button>
+    <button class="btn btn-ghost" id="btn-admin" style="display:none" onclick="show('admin')">Админ-панель</button>
   </div>
 </div>
 
@@ -279,6 +280,34 @@
   <div id="friend-list"></div>
   <p class="subtitle" style="margin-top:16px">Подписчики</p>
   <div id="subscriber-list"></div>
+</div>
+
+<div class="screen" id="screen-admin">
+  <div class="topbar">
+    <button class="icon-btn" onclick="show('profile')"><svg viewBox="0 0 24 24"><use href="#i-back"/></svg></button>
+    <h2>Админ-панель</h2>
+    <button class="icon-btn" onclick="loadAdminStats()"><svg viewBox="0 0 24 24"><use href="#i-refresh"/></svg></button>
+  </div>
+  <div class="card">
+    <h3>Пользователи</h3>
+    <div class="meta" style="font-size:28px;color:var(--accent);font-weight:700;margin:8px 0" id="admin-total">—</div>
+    <div class="desc">Всего зарегистрировано</div>
+  </div>
+  <div class="card">
+    <h3>Онлайн сейчас</h3>
+    <div class="meta" style="font-size:28px;color:var(--accent);font-weight:700;margin:8px 0" id="admin-online">—</div>
+    <div class="desc">Активность за последние 2 минуты</div>
+  </div>
+  <div class="card">
+    <h3>В мирах</h3>
+    <div class="meta" style="font-size:22px;color:var(--text);font-weight:650;margin:8px 0" id="admin-inworlds">—</div>
+    <div class="desc">Сейчас в активных мирах</div>
+  </div>
+  <div class="card">
+    <h3>Активные миры</h3>
+    <div class="meta" style="font-size:22px;color:var(--text);font-weight:650;margin:8px 0" id="admin-worlds">—</div>
+  </div>
+  <div class="status" id="admin-status"></div>
 </div>
 
 <div class="screen" id="screen-blocks">
@@ -333,17 +362,18 @@ function show(name) {
   const el = document.getElementById('screen-' + name);
   if (el) el.classList.add('active');
   const nav = document.getElementById('main-nav');
-  const authed = ['worlds','host','profile','avatar','friends','blocks'].includes(name);
+  const authed = ['worlds','host','profile','avatar','friends','blocks','admin'].includes(name);
   nav.style.display = authed ? 'flex' : 'none';
   document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
   if (name === 'friends') document.getElementById('nav-friends').classList.add('active');
-  else if (name === 'profile' || name === 'avatar' || name === 'blocks') document.getElementById('nav-profile').classList.add('active');
+  else if (name === 'profile' || name === 'avatar' || name === 'blocks' || name === 'admin') document.getElementById('nav-profile').classList.add('active');
   else if (authed) document.getElementById('nav-worlds').classList.add('active');
   if (name === 'worlds') loadWorlds();
   if (name === 'profile') renderProfile();
   if (name === 'avatar') renderAvatarPreview();
   if (name === 'friends') { loadFriends(); document.getElementById('friend-search').value=''; document.getElementById('friend-search-results').innerHTML=''; }
   if (name === 'blocks') loadBlocks();
+  if (name === 'admin') loadAdminStats();
 }
 
 function setStatus(id, text, ok) {
@@ -584,6 +614,8 @@ function stopHeartbeat() {
 function renderProfile() {
   if (!user) return;
   document.getElementById('profile-name').textContent = user.username;
+  const ab = document.getElementById('btn-admin');
+  if (ab) ab.style.display = (user.is_admin || (user.username || '').toLowerCase() === 'admin') ? 'block' : 'none';
   const cover = document.getElementById('profile-cover');
   const actions = cover.querySelector('.top-actions');
   if (user.avatar_url) {
@@ -743,6 +775,26 @@ async function doSearchFriends() {
       box.appendChild(row);
     });
   } catch (e) { box.innerHTML = '<div class="empty">Ошибка поиска</div>'; }
+}
+
+
+async function loadAdminStats() {
+  setStatus('admin-status', '');
+  document.getElementById('admin-total').textContent = '…';
+  document.getElementById('admin-online').textContent = '…';
+  try {
+    const { r, data } = await api('GET', '/admin/stats');
+    if (!r.ok) {
+      setStatus('admin-status', (data && data.detail) || 'Нет доступа');
+      return;
+    }
+    document.getElementById('admin-total').textContent = String(data.total_users);
+    document.getElementById('admin-online').textContent = String(data.online);
+    document.getElementById('admin-inworlds').textContent = String(data.in_worlds);
+    document.getElementById('admin-worlds').textContent = String(data.active_worlds);
+  } catch (e) {
+    setStatus('admin-status', 'Нет связи');
+  }
 }
 
 async function loadBlocks() {
