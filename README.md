@@ -2,48 +2,30 @@
 
 Лаунчер мультиплеера для **Minecraft PE 1.1.5**.
 
-## Что уже есть
+## Интерфейс (APK)
 
-- Регистрация / вход (JWT)
-- Создание и список активных миров
-- Консольный клиент (Termux + ПК)
-- База данных на Neon (PostgreSQL)
+Тёмно-зелёная тема в стиле змеи:
+- Вход / регистрация
+- Список миров (карточки)
+- Открыть свой мир
+- Кнопка «Играть»
 
-## Структура
+## Сборка APK (с телефона)
 
-```
-multiplayer-snake/
-├── backend/          # FastAPI сервер
-│   ├── main.py
-│   ├── models.py
-│   ├── auth.py
-│   └── ...
-└── client/           # Консольный клиент
-    ├── client.py
-    └── config.py
-```
+1. Зайди на GitHub → репозиторий `multiplayer-snake`
+2. **Actions** → **Build APK** → **Run workflow**
+3. Дождись окончания (15–40 мин)
+4. Скачай artifact `multiplayer-snake-apk`
+5. Установи APK на телефон
 
-## Запуск бэкенда (локально)
+## Бэкенд
 
-```bash
-cd backend
-pip install -r requirements.txt
-uvicorn main:app --host 0.0.0.0 --port 8000
-```
+Папка `backend/` — Flask API. Нужен хостинг (Render) и `DATABASE_URL` (Neon).
 
-Документация API: http://127.0.0.1:8000/docs
+В приложении API по умолчанию: `https://multiplayer-snake.onrender.com`  
+(замени URL после деплоя на Render)
 
-## Запуск клиента
+## Важно про Google Play
 
-```bash
-cd client
-pip install -r requirements.txt
-python client.py
-```
-
-## Дальше
-
-- [ ] Фейковый LAN для появления мира в Друзьях Minecraft 1.1.5
-- [ ] Проксирование трафика
-- [ ] Деплой бэкенда на Render.com
-- [ ] Улучшенный интерфейс
+Google Play часто отклоняет неофициальные лаунчеры Minecraft.  
+Может понадобиться публикация вне Play (сайт / Telegram) или сильная переработка под правила Google.
