@@ -105,6 +105,7 @@ class User(Base):
     username = Column(String(50), unique=True, index=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
     avatar = Column(String(32), default="snake_green")
+    avatar_data = Column(Text, nullable=True)  # data:image/...;base64,... (small)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     worlds = relationship("World", back_populates="owner")
 
@@ -163,6 +164,9 @@ if engine is not None:
             with engine.connect() as conn:
                 conn.exec_driver_sql(
                     "ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar VARCHAR(32) DEFAULT 'snake_green'"
+                )
+                conn.exec_driver_sql(
+                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_data TEXT"
                 )
                 conn.exec_driver_sql(
                     "ALTER TABLE worlds ADD COLUMN IF NOT EXISTS last_heartbeat TIMESTAMPTZ DEFAULT NOW()"
@@ -237,6 +241,7 @@ def user_to_dict(u, extra=None):
         "id": u.id,
         "username": u.username,
         "avatar": u.avatar or "snake_green",
+        "avatar_url": u.avatar_data if getattr(u, "avatar_data", None) else None,
         "created_at": u.created_at.isoformat() if u.created_at else None,
     }
     if extra:
@@ -382,6 +387,17 @@ def update_me(user, db):
             if av not in AVATARS:
                 return jsonify({"detail": "Неизвестный аватар"}), 400
             user.avatar = av
+        if "avatar_data" in data:
+            raw = data["avatar_data"]
+            if raw is None or raw == "":
+                user.avatar_data = None
+            elif not isinstance(raw, str) or not raw.startswith("data:image/"):
+                return jsonify({"detail": "Нужна картинка data:image/..."}), 400
+            elif len(raw) > 400_000:  # ~300KB
+                return jsonify({"detail": "Фото слишком большое (макс ~300KB)"}), 400
+            else:
+                user.avatar_data = raw
+                user.avatar = "photo"
         db.commit()
         db.refresh(user)
         return jsonify(user_to_dict(user))

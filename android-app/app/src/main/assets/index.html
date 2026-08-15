@@ -6,224 +6,249 @@
 <title>Multiplayer Snake</title>
 <style>
   :root {
-    --bg: #0b140b;
-    --card: #122012;
+    --bg: #0a120a;
+    --card: #121f12;
     --card2: #1a2b1a;
+    --line: #243324;
     --accent: #4ade80;
     --accent-dim: #22c55e;
     --text: #e8ffe8;
-    --muted: #8aaa8a;
+    --muted: #7a9a7a;
     --danger: #f87171;
-    --radius: 16px;
+    --radius: 14px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    line-height: 1.4;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--text); min-height: 100vh; line-height: 1.4;
+    -webkit-tap-highlight-color: transparent;
   }
-  .screen { display: none; min-height: 100vh; padding: 20px; padding-bottom: 40px; }
+  .screen { display: none; min-height: 100vh; padding: 18px; padding-bottom: 88px; }
   .screen.active { display: block; }
-  .logo { text-align: center; margin: 28px 0 24px; }
-  .logo .snake { font-size: 48px; line-height: 1; }
-  .logo h1 { font-size: 22px; color: var(--accent); margin-top: 8px; }
+  .logo { text-align: center; margin: 36px 0 28px; }
+  .logo-mark {
+    width: 64px; height: 64px; margin: 0 auto 12px; border-radius: 18px;
+    background: linear-gradient(145deg, #1a3d1a, #0d1f0d);
+    border: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .logo-mark svg { width: 36px; height: 36px; }
+  .logo h1 { font-size: 22px; color: var(--accent); font-weight: 700; letter-spacing: -0.02em; }
   .logo p { color: var(--muted); font-size: 13px; margin-top: 4px; }
   .field {
-    width: 100%; background: var(--card); border: 1px solid #1f3320;
+    width: 100%; background: var(--card); border: 1px solid var(--line);
     border-radius: 12px; color: var(--text); padding: 14px 16px;
     font-size: 16px; margin-bottom: 12px; outline: none;
   }
   .field:focus { border-color: var(--accent); }
   .btn {
     width: 100%; border: none; border-radius: 12px; padding: 14px;
-    font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 6px;
+    font-size: 15px; font-weight: 650; cursor: pointer; margin-top: 6px;
   }
   .btn-primary { background: var(--accent); color: #052e16; }
   .btn-primary:active { background: var(--accent-dim); }
-  .btn-ghost { background: transparent; color: var(--accent); margin-top: 10px; }
-  .btn-danger { background: #3f1a1a; color: var(--danger); }
+  .btn-ghost { background: transparent; color: var(--accent); border: 1px solid var(--line); }
+  .btn-danger { background: #2a1515; color: var(--danger); border: 1px solid #3f2020; }
   .btn-small {
     width: auto; padding: 8px 14px; font-size: 13px; background: var(--accent);
-    color: #052e16; border-radius: 10px; border: none; font-weight: 700;
+    color: #052e16; border-radius: 10px; border: none; font-weight: 650;
   }
   .btn-tiny {
-    padding: 6px 10px; font-size: 12px; border-radius: 8px; border: none;
-    font-weight: 600; margin-left: 4px;
+    padding: 7px 11px; font-size: 12px; border-radius: 8px; border: 1px solid var(--line);
+    background: var(--card2); color: var(--text); font-weight: 600;
   }
-  .btn-tiny.kick { background: #3d3a1a; color: #fbbf24; }
-  .btn-tiny.ban { background: #3f1a1a; color: var(--danger); }
-  .btn-tiny.friend { background: #1a2f3d; color: #38bdf8; }
-  .btn-tiny.ok { background: var(--card2); color: var(--accent); }
-  .status { text-align: center; color: var(--danger); font-size: 13px; min-height: 20px; margin-top: 10px; }
+  .btn-tiny.friend { color: #7dd3fc; border-color: #1e3a4a; }
+  .btn-tiny.ok { color: var(--accent); }
+  .status { text-align: center; color: var(--danger); font-size: 13px; min-height: 18px; margin-top: 10px; }
   .status.ok { color: var(--accent); }
   .topbar {
-    display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; gap: 8px;
+    display: flex; align-items: center; gap: 8px; margin-bottom: 14px; min-height: 40px;
   }
-  .topbar h2 { font-size: 18px; color: var(--accent); flex: 1; }
+  .topbar h2 { font-size: 18px; color: var(--accent); flex: 1; font-weight: 700; }
   .icon-btn {
-    background: var(--card); border: none; color: var(--accent);
-    width: 40px; height: 40px; border-radius: 10px; font-size: 18px; flex-shrink: 0;
+    width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--line);
+    background: var(--card); color: var(--muted);
+    display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
   }
+  .icon-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .icon-btn:active { background: var(--card2); color: var(--accent); }
+  .icon-btn.danger { color: var(--danger); }
   .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 12px; }
   .card {
     background: var(--card); border-radius: var(--radius); padding: 14px 16px;
-    margin-bottom: 10px; border: 1px solid #1a2a1a;
+    margin-bottom: 10px; border: 1px solid var(--line);
   }
-  .card h3 { font-size: 16px; margin-bottom: 4px; }
+  .card h3 { font-size: 15px; margin-bottom: 4px; font-weight: 650; }
   .card .desc { color: var(--muted); font-size: 13px; margin-bottom: 8px; }
-  .card .meta { color: var(--muted); font-size: 12px; }
-  .card .row { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; flex-wrap: wrap; gap: 6px; }
-  .empty { text-align: center; color: var(--muted); padding: 32px 12px; font-size: 14px; }
+  .card .meta { color: var(--muted); font-size: 12px; display: flex; align-items: center; gap: 6px; }
+  .card .row { display: flex; align-items: center; justify-content: flex-end; margin-top: 10px; gap: 6px; }
+  .empty { text-align: center; color: var(--muted); padding: 28px 12px; font-size: 14px; }
   .user-row {
     display: flex; align-items: center; gap: 12px; padding: 12px;
-    background: var(--card); border-radius: 12px; margin-bottom: 8px;
+    background: var(--card); border-radius: 12px; margin-bottom: 8px; border: 1px solid var(--line);
   }
   .avatar {
     width: 44px; height: 44px; border-radius: 12px; background: var(--card2);
-    display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    overflow: hidden; border: 1px solid var(--line);
   }
-  .avatar.lg { width: 72px; height: 72px; font-size: 36px; border-radius: 18px; }
+  .avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .avatar svg { width: 22px; height: 22px; stroke: var(--accent); fill: none; stroke-width: 1.6; }
+  .avatar.lg { width: 88px; height: 88px; border-radius: 22px; margin: 0 auto; }
+  .avatar.lg svg { width: 40px; height: 40px; }
   .user-info { flex: 1; min-width: 0; }
-  .user-info .name { font-weight: 700; font-size: 15px; }
-  .user-info .sub { color: var(--muted); font-size: 12px; }
+  .user-info .name { font-weight: 650; font-size: 15px; }
+  .user-info .sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
   .badge {
-    display: inline-block; background: #1a3d1a; color: var(--accent);
-    font-size: 11px; padding: 2px 8px; border-radius: 6px; margin-left: 6px;
+    display: inline-flex; align-items: center; gap: 4px; background: #143214; color: var(--accent);
+    font-size: 11px; padding: 2px 8px; border-radius: 6px; margin-left: 6px; font-weight: 600;
   }
-  .avatar-grid {
-    display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 12px 0;
+  .host-dot {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--accent);
+    animation: pulse 1.5s infinite;
   }
-  .avatar-pick {
-    aspect-ratio: 1; border-radius: 12px; background: var(--card);
-    border: 2px solid transparent; font-size: 28px;
-    display: flex; align-items: center; justify-content: center; cursor: pointer;
-  }
-  .avatar-pick.selected { border-color: var(--accent); background: var(--card2); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
   .nav {
-    position: fixed; bottom: 0; left: 0; right: 0; background: #0d1a0d;
-    border-top: 1px solid #1a2a1a; display: flex; padding: 8px 4px; padding-bottom: max(8px, env(safe-area-inset-bottom));
-    z-index: 50;
+    position: fixed; bottom: 0; left: 0; right: 0; background: rgba(10,18,10,.96);
+    border-top: 1px solid var(--line); display: flex;
+    padding: 6px 8px max(6px, env(safe-area-inset-bottom)); z-index: 50;
+    backdrop-filter: blur(12px);
   }
   .nav button {
     flex: 1; background: none; border: none; color: var(--muted);
-    font-size: 11px; padding: 6px 2px; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    font-size: 11px; font-weight: 600; padding: 8px 4px;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
   }
+  .nav button svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
   .nav button.active { color: var(--accent); }
-  .nav button span { font-size: 20px; }
-  .with-nav { padding-bottom: 72px; }
+  .fab {
+    position: fixed; right: 16px; bottom: 78px; width: 48px; height: 48px;
+    border-radius: 14px; background: var(--card); border: 1px solid var(--line);
+    color: var(--accent); z-index: 60; display: none; align-items: center; justify-content: center;
+    box-shadow: 0 8px 24px rgba(0,0,0,.45);
+  }
+  .fab.show { display: flex; }
+  .fab svg { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 1.7; }
   .modal-bg {
-    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.72);
     z-index: 100; align-items: flex-end; justify-content: center;
   }
   .modal-bg.show { display: flex; }
   .modal {
     background: var(--card); border-radius: 20px 20px 0 0; padding: 20px;
     width: 100%; max-width: 480px; max-height: 80vh; overflow-y: auto;
+    border-top: 1px solid var(--line);
   }
-  .modal h3 { color: var(--accent); margin-bottom: 12px; }
-  .modal .actions { display: flex; gap: 8px; margin-top: 16px; }
-  .modal .actions .btn { margin-top: 0; }
-  .host-dot {
-    width: 8px; height: 8px; border-radius: 50%; background: var(--accent);
-    display: inline-block; margin-right: 4px; animation: pulse 1.5s infinite;
+  .modal h3 { color: var(--accent); margin-bottom: 12px; font-size: 17px; }
+  .photo-box {
+    text-align: center; margin: 12px 0 18px;
   }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-  .fab-snake {
-    position: fixed; right: 16px; bottom: 80px; width: 48px; height: 48px;
-    border-radius: 14px; background: rgba(26,43,26,0.92); border: 1px solid #2a4a2a;
-    color: var(--accent); font-size: 22px; z-index: 60;
-    display: none; align-items: center; justify-content: center;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
-  }
-  .fab-snake.show { display: flex; }
-  .fab-snake:active { transform: scale(0.94); }
+  .photo-actions { display: flex; gap: 8px; margin-top: 12px; }
+  .photo-actions .btn { margin-top: 0; }
+  input[type=file] { display: none; }
+  .hint { color: var(--muted); font-size: 12px; margin-top: 8px; line-height: 1.45; }
 </style>
 </head>
 <body>
 
-<!-- LOGIN -->
+<!-- SVG sprite helpers via inline -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 3 2.5 15 0 18M12 3c-2.5 3-2.5 15 0 18"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a3 3 0 0 1 0 5.74"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="3"/></symbol>
+  <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></symbol>
+  <symbol id="i-snake" viewBox="0 0 24 24"><path d="M4 15c2-6 6-8 10-6 3 1.5 4 4 4 6"/><path d="M14 15c0 2-1.5 4-4 4s-4-1.5-4-3"/><circle cx="17" cy="9" r="1.2" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></symbol>
+</svg>
+
 <div class="screen active" id="screen-login">
   <div class="logo">
-    <div class="snake">🐍</div>
+    <div class="logo-mark"><svg viewBox="0 0 24 24"><use href="#i-snake"/></svg></div>
     <h1>Multiplayer Snake</h1>
     <p>Minecraft PE 1.1.5</p>
   </div>
   <input class="field" id="login-user" placeholder="Ник" autocomplete="username">
   <input class="field" id="login-pass" type="password" placeholder="Пароль" autocomplete="current-password">
-  <button class="btn btn-primary" onclick="doLogin()">ВОЙТИ</button>
+  <button class="btn btn-primary" onclick="doLogin()">Войти</button>
   <button class="btn btn-ghost" onclick="show('register')">Регистрация</button>
   <div class="status" id="login-status"></div>
 </div>
 
-<!-- REGISTER -->
 <div class="screen" id="screen-register">
   <div class="logo">
-    <div class="snake">🐍</div>
+    <div class="logo-mark"><svg viewBox="0 0 24 24"><use href="#i-snake"/></svg></div>
     <h1>Регистрация</h1>
   </div>
   <input class="field" id="reg-user" placeholder="Ник (мин. 3)">
   <input class="field" id="reg-pass" type="password" placeholder="Пароль (мин. 4)">
   <input class="field" id="reg-pass2" type="password" placeholder="Повтор пароля">
-  <button class="btn btn-primary" onclick="doRegister()">СОЗДАТЬ</button>
+  <button class="btn btn-primary" onclick="doRegister()">Создать аккаунт</button>
   <button class="btn btn-ghost" onclick="show('login')">Назад</button>
   <div class="status" id="reg-status"></div>
 </div>
 
-<!-- WORLDS -->
-<div class="screen with-nav" id="screen-worlds">
+<div class="screen" id="screen-worlds">
   <div class="topbar">
     <h2>Миры</h2>
-    <button class="icon-btn" onclick="loadWorlds()" title="Обновить">↻</button>
+    <button class="icon-btn" onclick="loadWorlds()" title="Обновить"><svg viewBox="0 0 24 24"><use href="#i-refresh"/></svg></button>
   </div>
   <p class="subtitle" id="worlds-sub">Загрузка...</p>
   <div id="world-list"></div>
-  <button class="btn btn-primary" onclick="show('host')">+ Открыть свой мир</button>
+  <button class="btn btn-primary" onclick="show('host')">Открыть свой мир</button>
 </div>
 
-<!-- HOST -->
-<div class="screen with-nav" id="screen-host">
+<div class="screen" id="screen-host">
   <div class="topbar">
-    <button class="icon-btn" onclick="show('worlds')">←</button>
+    <button class="icon-btn" onclick="show('worlds')"><svg viewBox="0 0 24 24"><use href="#i-back"/></svg></button>
     <h2>Открыть мир</h2>
   </div>
   <input class="field" id="host-name" placeholder="Название мира">
   <input class="field" id="host-desc" placeholder="Описание (необязательно)">
   <input class="field" id="host-max" type="number" value="5" min="2" max="10" placeholder="Макс. игроков">
-  <button class="btn btn-primary" onclick="doHost()">СОЗДАТЬ И ЗАПУСТИТЬ MC</button>
+  <button class="btn btn-primary" onclick="doHost()">Создать и открыть Minecraft</button>
   <div class="status" id="host-status"></div>
-  <p class="subtitle" style="margin-top:16px">После создания откроется Minecraft PE. Включи LAN в мире. Пока ты хост — мир виден в списке (~90 сек без heartbeat пропадёт).</p>
+  <p class="hint">После создания запустится Minecraft PE. Включи LAN в мире. Пока лаунчер шлёт heartbeat — мир виден в списке (~90 сек).</p>
 </div>
 
-<!-- PROFILE -->
-<div class="screen with-nav" id="screen-profile">
-  <div class="topbar"><h2>Профиль</h2></div>
-  <div style="text-align:center;margin:16px 0">
-    <div class="avatar lg" id="profile-avatar">🐍</div>
-    <div style="font-size:18px;font-weight:700;margin-top:10px" id="profile-name">—</div>
+<div class="screen" id="screen-profile">
+  <div class="topbar">
+    <h2>Профиль</h2>
+    <button class="icon-btn danger" onclick="doLogout()" title="Выйти"><svg viewBox="0 0 24 24"><use href="#i-logout"/></svg></button>
   </div>
-  <button class="btn btn-primary" onclick="show('avatar')">Сменить аватар</button>
+  <div class="photo-box">
+    <div class="avatar lg" id="profile-avatar"><svg viewBox="0 0 24 24"><use href="#i-user"/></svg></div>
+    <div style="font-size:18px;font-weight:700;margin-top:12px" id="profile-name">—</div>
+  </div>
+  <button class="btn btn-primary" onclick="show('avatar')">Сменить фото</button>
   <button class="btn btn-ghost" onclick="show('friends')">Друзья</button>
-  <button class="btn btn-ghost" onclick="show('blocks')">ЧС (чёрный список)</button>
-  <button class="btn btn-danger" style="margin-top:20px" onclick="doLogout()">Выйти</button>
+  <button class="btn btn-ghost" onclick="show('blocks')">Чёрный список</button>
+  <button class="btn btn-ghost" id="btn-overlay" onclick="toggleOverlay()">Кнопка поверх Minecraft</button>
+  <p class="hint">Оверлей: маленькая кнопка поверх игры. Нажатие возвращает в лаунчер. Нужно разрешение «поверх других окон».</p>
 </div>
 
-<!-- AVATAR -->
-<div class="screen with-nav" id="screen-avatar">
+<div class="screen" id="screen-avatar">
   <div class="topbar">
-    <button class="icon-btn" onclick="show('profile')">←</button>
-    <h2>Аватар</h2>
+    <button class="icon-btn" onclick="show('profile')"><svg viewBox="0 0 24 24"><use href="#i-back"/></svg></button>
+    <h2>Фото профиля</h2>
   </div>
-  <div class="avatar-grid" id="avatar-grid"></div>
-  <button class="btn btn-primary" onclick="saveAvatar()">Сохранить</button>
+  <div class="photo-box">
+    <div class="avatar lg" id="avatar-preview"><svg viewBox="0 0 24 24"><use href="#i-camera"/></svg></div>
+  </div>
+  <input type="file" id="avatar-file" accept="image/*" onchange="onPickPhoto(event)">
+  <div class="photo-actions">
+    <button class="btn btn-primary" onclick="document.getElementById('avatar-file').click()">Выбрать фото</button>
+    <button class="btn btn-ghost" onclick="clearPhoto()">Сбросить</button>
+  </div>
+  <button class="btn btn-primary" style="margin-top:14px" onclick="savePhoto()">Сохранить</button>
   <div class="status" id="avatar-status"></div>
+  <p class="hint">Фото сожмётся автоматически. Максимум ~300 КБ.</p>
 </div>
 
-<!-- FRIENDS -->
-<div class="screen with-nav" id="screen-friends">
+<div class="screen" id="screen-friends">
   <div class="topbar">
-    <button class="icon-btn" onclick="show('profile')">←</button>
+    <button class="icon-btn" onclick="show('profile')"><svg viewBox="0 0 24 24"><use href="#i-back"/></svg></button>
     <h2>Друзья</h2>
   </div>
   <input class="field" id="friend-search" placeholder="Поиск по нику..." oninput="onSearchFriends()">
@@ -232,54 +257,35 @@
   <div id="friend-list"></div>
 </div>
 
-<!-- BLOCKS -->
-<div class="screen with-nav" id="screen-blocks">
+<div class="screen" id="screen-blocks">
   <div class="topbar">
-    <button class="icon-btn" onclick="show('profile')">←</button>
+    <button class="icon-btn" onclick="show('profile')"><svg viewBox="0 0 24 24"><use href="#i-back"/></svg></button>
     <h2>Чёрный список</h2>
   </div>
-  <p class="subtitle">Забаненные не смогут зайти на твои миры</p>
+  <p class="subtitle">Эти игроки не смогут зайти на твои миры</p>
   <div id="block-list"></div>
 </div>
 
-<!-- NAV -->
 <div class="nav" id="main-nav" style="display:none">
-  <button id="nav-worlds" onclick="show('worlds')"><span>🌍</span>Миры</button>
-  <button id="nav-friends" onclick="show('friends')"><span>👥</span>Друзья</button>
-  <button id="nav-profile" onclick="show('profile')"><span>👤</span>Профиль</button>
+  <button id="nav-worlds" onclick="show('worlds')">
+    <svg viewBox="0 0 24 24"><use href="#i-globe"/></svg>Миры
+  </button>
+  <button id="nav-friends" onclick="show('friends')">
+    <svg viewBox="0 0 24 24"><use href="#i-users"/></svg>Друзья
+  </button>
+  <button id="nav-profile" onclick="show('profile')">
+    <svg viewBox="0 0 24 24"><use href="#i-user"/></svg>Профиль
+  </button>
 </div>
 
-<!-- FAB snake (in-app hint / servers) -->
-<button class="fab-snake" id="fab-snake" onclick="openServersModal()" title="Серверы">🐍</button>
+<button class="fab" id="fab-snake" onclick="openServersModal()" title="Серверы">
+  <svg viewBox="0 0 24 24"><use href="#i-snake"/></svg>
+</button>
 
-<!-- Modal: servers -->
 <div class="modal-bg" id="modal-servers" onclick="if(event.target===this)closeModals()">
   <div class="modal">
-    <h3>🐍 Активные серверы</h3>
+    <h3>Активные серверы</h3>
     <div id="modal-server-list"></div>
-    <button class="btn btn-ghost" onclick="closeModals()">Закрыть</button>
-  </div>
-</div>
-
-<!-- Modal: host confirm -->
-<div class="modal-bg" id="modal-host-ask" onclick="if(event.target===this)closeModals()">
-  <div class="modal">
-    <h3>Начать хост?</h3>
-    <p class="subtitle">Мир появится в общем списке. Другие смогут присоединиться.</p>
-    <div class="actions">
-      <button class="btn btn-primary" onclick="confirmHostYes()">Да</button>
-      <button class="btn btn-ghost" onclick="confirmHostNo()">Нет</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal: host panel -->
-<div class="modal-bg" id="modal-host-panel" onclick="if(event.target===this)closeModals()">
-  <div class="modal">
-    <h3>Панель хоста</h3>
-    <p class="subtitle">Пинг: <span id="host-ping">—</span> мс</p>
-    <div id="host-players"></div>
-    <button class="btn btn-danger" style="margin-top:12px" onclick="stopHosting()">Остановить хост</button>
     <button class="btn btn-ghost" onclick="closeModals()">Закрыть</button>
   </div>
 </div>
@@ -288,19 +294,12 @@
 const API = localStorage.getItem('api_url') || 'https://snake-master-3pzr.onrender.com';
 let token = localStorage.getItem('token') || '';
 let user = null;
-let selectedAvatar = 'snake_green';
+let pendingPhoto = null;
 let myWorldId = null;
 let heartbeatTimer = null;
 let searchTimer = null;
 
-const AVATAR_EMOJI = {
-  snake_green: '🐍', snake_blue: '🔵', snake_red: '🔴', snake_gold: '✨',
-  creeper: '💣', steve: '🧱', alex: '🧡', enderman: '👁', diamond: '💎', pickaxe: '⛏'
-};
-
 try { user = JSON.parse(localStorage.getItem('user') || 'null'); } catch(e) {}
-
-function emoji(av) { return AVATAR_EMOJI[av] || '🐍'; }
 
 function show(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -311,15 +310,13 @@ function show(name) {
   nav.style.display = authed ? 'flex' : 'none';
   document.getElementById('fab-snake').classList.toggle('show', authed);
   document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
-  const navBtn = document.getElementById('nav-' + (name === 'host' || name === 'avatar' || name === 'blocks' ? (name==='host'?'worlds':name==='avatar'||name==='blocks'?'profile':name) : name));
   if (name === 'friends') document.getElementById('nav-friends').classList.add('active');
   else if (name === 'profile' || name === 'avatar' || name === 'blocks') document.getElementById('nav-profile').classList.add('active');
   else if (authed) document.getElementById('nav-worlds').classList.add('active');
-
   if (name === 'worlds') loadWorlds();
   if (name === 'profile') renderProfile();
-  if (name === 'avatar') renderAvatarGrid();
-  if (name === 'friends') { loadFriends(); document.getElementById('friend-search').value = ''; document.getElementById('friend-search-results').innerHTML = ''; }
+  if (name === 'avatar') renderAvatarPreview();
+  if (name === 'friends') { loadFriends(); document.getElementById('friend-search').value=''; document.getElementById('friend-search-results').innerHTML=''; }
   if (name === 'blocks') loadBlocks();
 }
 
@@ -331,27 +328,20 @@ function setStatus(id, text, ok) {
 }
 
 function saveAuth(t, u) {
-  token = t;
-  user = u;
+  token = t; user = u;
   localStorage.setItem('token', t);
   localStorage.setItem('user', JSON.stringify(u));
 }
 
 function doLogout() {
-  token = '';
-  user = null;
-  myWorldId = null;
-  stopHeartbeat();
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
+  token = ''; user = null; myWorldId = null; stopHeartbeat();
+  try { if (window.AndroidBridge) AndroidBridge.stopOverlay(); } catch(e) {}
+  localStorage.removeItem('token'); localStorage.removeItem('user');
   show('login');
 }
 
 async function api(method, path, body) {
-  const opts = {
-    method,
-    headers: { 'Content-Type': 'application/json' }
-  };
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
   if (token) opts.headers['Authorization'] = 'Bearer ' + token;
   if (body) opts.body = JSON.stringify(body);
   const r = await fetch(API + path, opts);
@@ -361,29 +351,47 @@ async function api(method, path, body) {
 }
 
 function launchMinecraft() {
-  // Try common MCPE package intents via Android bridge if present
   try {
     if (window.AndroidBridge && AndroidBridge.launchMinecraft) {
       AndroidBridge.launchMinecraft();
+      // start overlay after short delay
+      setTimeout(() => {
+        try { AndroidBridge.startOverlay(); } catch(e) {}
+      }, 800);
       return;
     }
   } catch(e) {}
-  // Fallback: intent URL (works on many devices)
-  const intents = [
-    'minecraft://',
-    'intent://#Intent;package=com.mojang.minecraftpe;end',
-    'intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=com.mojang.minecraftpe;end'
-  ];
-  for (const u of intents) {
-    try {
-      const a = document.createElement('a');
-      a.href = u;
-      a.click();
-      break;
-    } catch(e) {}
+  alert('Запуск Minecraft доступен только в APK. Убедись, что Minecraft PE установлен.');
+}
+
+function toggleOverlay() {
+  try {
+    if (!window.AndroidBridge) {
+      alert('Оверлей только в Android APK');
+      return;
+    }
+    if (!AndroidBridge.hasOverlayPermission()) {
+      AndroidBridge.startOverlay(); // opens settings
+      return;
+    }
+    AndroidBridge.startOverlay();
+    alert('Оверлей включён. Кнопка появится поверх Minecraft.');
+  } catch(e) {
+    alert('Не удалось включить оверлей');
   }
-  // last resort
-  try { window.location.href = 'minecraft://'; } catch(e) {}
+}
+
+function setAvatarEl(el, u) {
+  if (!el) return;
+  if (u && u.avatar_url) {
+    el.innerHTML = '<img alt="" src="' + u.avatar_url + '">';
+  } else {
+    el.innerHTML = '<svg viewBox="0 0 24 24"><use href="#i-user"/></svg>';
+  }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 async function doLogin() {
@@ -392,44 +400,24 @@ async function doLogin() {
   setStatus('login-status', 'Вход...');
   try {
     const { r, data } = await api('POST', '/login', { username, password });
-    if (!r.ok) {
-      setStatus('login-status', (data && data.detail) || 'Ошибка входа');
-      return;
-    }
+    if (!r.ok) { setStatus('login-status', (data && data.detail) || 'Ошибка входа'); return; }
     saveAuth(data.access_token, data.user);
     show('worlds');
-  } catch (e) {
-    setStatus('login-status', 'Нет связи с сервером');
-  }
+  } catch (e) { setStatus('login-status', 'Нет связи с сервером'); }
 }
 
 async function doRegister() {
   const username = document.getElementById('reg-user').value.trim();
   const password = document.getElementById('reg-pass').value;
   const password2 = document.getElementById('reg-pass2').value;
-  if (password !== password2) {
-    setStatus('reg-status', 'Пароли не совпадают');
-    return;
-  }
+  if (password !== password2) { setStatus('reg-status', 'Пароли не совпадают'); return; }
   setStatus('reg-status', 'Регистрация...');
   try {
     const { r, data } = await api('POST', '/register', { username, password });
-    if (!r.ok) {
-      setStatus('reg-status', (data && data.detail) || 'Ошибка');
-      return;
-    }
+    if (!r.ok) { setStatus('reg-status', (data && data.detail) || 'Ошибка'); return; }
     saveAuth(data.access_token, data.user);
     show('worlds');
-  } catch (e) {
-    setStatus('reg-status', 'Нет связи с сервером');
-  }
-}
-
-function escapeHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-function escapeAttr(s) {
-  return String(s).replace(/"/g, '&quot;');
+  } catch (e) { setStatus('reg-status', 'Нет связи с сервером'); }
 }
 
 async function loadWorlds() {
@@ -439,14 +427,11 @@ async function loadWorlds() {
   list.innerHTML = '';
   try {
     const { r, data } = await api('GET', '/worlds');
-    if (!r.ok) {
-      sub.textContent = 'Не удалось загрузить';
-      return;
-    }
+    if (!r.ok) { sub.textContent = 'Не удалось загрузить'; return; }
     const worlds = data || [];
-    sub.textContent = worlds.length ? ('Открытых миров: ' + worlds.length) : 'Нет открытых миров — открой свой';
+    sub.textContent = worlds.length ? ('Открытых миров: ' + worlds.length) : 'Нет открытых миров';
     if (!worlds.length) {
-      list.innerHTML = '<div class="empty">Пока тихо... Стань первым хостом 🐍</div>';
+      list.innerHTML = '<div class="empty">Пока тихо — открой свой мир</div>';
       return;
     }
     worlds.forEach(w => {
@@ -455,29 +440,20 @@ async function loadWorlds() {
       el.innerHTML =
         '<h3>' + escapeHtml(w.name) + '</h3>' +
         '<div class="desc">' + escapeHtml(w.description || 'Без описания') + '</div>' +
-        '<div class="meta"><span class="host-dot"></span>' + emoji(w.owner_avatar) + ' ' + escapeHtml(w.owner_username || '?') +
+        '<div class="meta"><span class="host-dot"></span>' + escapeHtml(w.owner_username || '?') +
         ' · ' + (w.player_count || 0) + '/' + (w.max_players || 5) + '</div>' +
         '<div class="row"><button class="btn-small">Играть</button></div>';
-      el.querySelector('button').onclick = function() { joinWorld(w); };
+      el.querySelector('button').onclick = () => joinWorld(w);
       list.appendChild(el);
     });
-  } catch (e) {
-    sub.textContent = 'Нет связи с сервером';
-  }
+  } catch (e) { sub.textContent = 'Нет связи с сервером'; }
 }
 
 async function joinWorld(w) {
   try {
     const { r, data } = await api('POST', '/worlds/' + w.id + '/join-check');
-    if (!r.ok) {
-      alert((data && data.detail) || 'Нельзя присоединиться');
-      return;
-    }
-  } catch (e) {
-    alert('Нет связи');
-    return;
-  }
-  alert('Открой Minecraft PE 1.1.5 → Друзья / LAN\\nМир: ' + w.name + '\\nХост: ' + w.owner_username + '\\n\\nЗапускаем Minecraft...');
+    if (!r.ok) { alert((data && data.detail) || 'Нельзя присоединиться'); return; }
+  } catch (e) { alert('Нет связи'); return; }
   launchMinecraft();
 }
 
@@ -485,91 +461,84 @@ async function doHost() {
   const name = document.getElementById('host-name').value.trim();
   const description = document.getElementById('host-desc').value.trim();
   let max_players = parseInt(document.getElementById('host-max').value || '5', 10);
-  if (!name) {
-    setStatus('host-status', 'Введи название');
-    return;
-  }
+  if (!name) { setStatus('host-status', 'Введи название'); return; }
   if (isNaN(max_players)) max_players = 5;
   setStatus('host-status', 'Открываем...');
   try {
     const { r, data } = await api('POST', '/worlds', { name, description, max_players });
-    if (!r.ok) {
-      setStatus('host-status', (data && data.detail) || 'Ошибка');
-      return;
-    }
+    if (!r.ok) { setStatus('host-status', (data && data.detail) || 'Ошибка'); return; }
     myWorldId = data.id;
-    setStatus('host-status', 'Мир открыт! Запуск MC...', true);
+    setStatus('host-status', 'Мир открыт, запуск Minecraft...', true);
     startHeartbeat();
-    setTimeout(function() { launchMinecraft(); }, 400);
-  } catch (e) {
-    setStatus('host-status', 'Нет связи с сервером');
-  }
+    setTimeout(launchMinecraft, 300);
+  } catch (e) { setStatus('host-status', 'Нет связи с сервером'); }
 }
 
 function startHeartbeat() {
   stopHeartbeat();
   if (!myWorldId) return;
-  heartbeatTimer = setInterval(async () => {
-    try {
-      await api('POST', '/worlds/' + myWorldId + '/heartbeat', { player_count: 1 });
-    } catch (e) {}
-  }, 30000);
-  // first beat
-  api('POST', '/worlds/' + myWorldId + '/heartbeat', { player_count: 1 }).catch(()=>{});
+  const beat = () => api('POST', '/worlds/' + myWorldId + '/heartbeat', { player_count: 1 }).catch(()=>{});
+  beat();
+  heartbeatTimer = setInterval(beat, 30000);
 }
-
 function stopHeartbeat() {
   if (heartbeatTimer) clearInterval(heartbeatTimer);
   heartbeatTimer = null;
 }
 
-async function stopHosting() {
-  if (myWorldId) {
-    try { await api('DELETE', '/worlds/' + myWorldId); } catch(e) {}
-  }
-  myWorldId = null;
-  stopHeartbeat();
-  closeModals();
-  show('worlds');
-}
-
 function renderProfile() {
   if (!user) return;
   document.getElementById('profile-name').textContent = user.username;
-  document.getElementById('profile-avatar').textContent = emoji(user.avatar);
+  setAvatarEl(document.getElementById('profile-avatar'), user);
 }
 
-function renderAvatarGrid() {
-  selectedAvatar = (user && user.avatar) || 'snake_green';
-  const grid = document.getElementById('avatar-grid');
-  grid.innerHTML = '';
-  Object.keys(AVATAR_EMOJI).forEach(key => {
-    const d = document.createElement('div');
-    d.className = 'avatar-pick' + (key === selectedAvatar ? ' selected' : '');
-    d.textContent = AVATAR_EMOJI[key];
-    d.onclick = () => {
-      selectedAvatar = key;
-      renderAvatarGrid();
+function renderAvatarPreview() {
+  pendingPhoto = user && user.avatar_url ? user.avatar_url : null;
+  const el = document.getElementById('avatar-preview');
+  if (pendingPhoto) el.innerHTML = '<img alt="" src="' + pendingPhoto + '">';
+  else el.innerHTML = '<svg viewBox="0 0 24 24"><use href="#i-camera"/></svg>';
+}
+
+function onPickPhoto(ev) {
+  const file = ev.target.files && ev.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      const max = 256;
+      let w = img.width, h = img.height;
+      if (w > h) { if (w > max) { h = h * max / w; w = max; } }
+      else { if (h > max) { w = w * max / h; h = max; } }
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(w); canvas.height = Math.round(h);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      pendingPhoto = canvas.toDataURL('image/jpeg', 0.72);
+      document.getElementById('avatar-preview').innerHTML = '<img alt="" src="' + pendingPhoto + '">';
     };
-    grid.appendChild(d);
-  });
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
 }
 
-async function saveAvatar() {
+function clearPhoto() {
+  pendingPhoto = null;
+  document.getElementById('avatar-preview').innerHTML = '<svg viewBox="0 0 24 24"><use href="#i-camera"/></svg>';
+  document.getElementById('avatar-file').value = '';
+}
+
+async function savePhoto() {
   setStatus('avatar-status', 'Сохранение...');
   try {
-    const { r, data } = await api('PATCH', '/me', { avatar: selectedAvatar });
-    if (!r.ok) {
-      setStatus('avatar-status', (data && data.detail) || 'Ошибка');
-      return;
-    }
+    const body = { avatar_data: pendingPhoto || '' };
+    const { r, data } = await api('PATCH', '/me', body);
+    if (!r.ok) { setStatus('avatar-status', (data && data.detail) || 'Ошибка'); return; }
     user = data;
     localStorage.setItem('user', JSON.stringify(user));
     setStatus('avatar-status', 'Сохранено', true);
-    setTimeout(() => show('profile'), 500);
-  } catch (e) {
-    setStatus('avatar-status', 'Нет связи');
-  }
+    setTimeout(() => show('profile'), 400);
+  } catch (e) { setStatus('avatar-status', 'Нет связи'); }
 }
 
 async function loadFriends() {
@@ -577,48 +546,43 @@ async function loadFriends() {
   list.innerHTML = '<div class="empty">Загрузка...</div>';
   try {
     const { r, data } = await api('GET', '/friends');
-    if (!r.ok) {
-      list.innerHTML = '<div class="empty">Ошибка</div>';
-      return;
-    }
+    if (!r.ok) { list.innerHTML = '<div class="empty">Ошибка</div>'; return; }
     const friends = data || [];
-    if (!friends.length) {
-      list.innerHTML = '<div class="empty">Пока нет друзей — найди по нику сверху</div>';
-      return;
-    }
+    if (!friends.length) { list.innerHTML = '<div class="empty">Нет друзей — найди по нику сверху</div>'; return; }
     list.innerHTML = '';
     friends.forEach(f => {
       const row = document.createElement('div');
       row.className = 'user-row';
-      let actions = '<button class="btn-tiny ok" data-act="remove">Удалить</button>';
-      if (f.hosting) {
-        actions = '<button class="btn-small" data-act="join">Присоединиться</button> ' + actions;
-      }
-      row.innerHTML =
-        '<div class="avatar">' + emoji(f.avatar) + '</div>' +
-        '<div class="user-info"><div class="name">' + escapeHtml(f.username) +
+      const av = document.createElement('div');
+      av.className = 'avatar';
+      setAvatarEl(av, f);
+      row.appendChild(av);
+      const info = document.createElement('div');
+      info.className = 'user-info';
+      info.innerHTML = '<div class="name">' + escapeHtml(f.username) +
         (f.hosting ? '<span class="badge"><span class="host-dot"></span>хост</span>' : '') +
-        '</div><div class="sub">' + (f.hosting ? escapeHtml(f.hosting.name) : 'оффлайн') + '</div></div>' +
-        '<div>' + actions + '</div>';
-      row.querySelectorAll('button').forEach(btn => {
-        btn.onclick = async () => {
-          if (btn.dataset.act === 'join') joinWorld(f.hosting);
-          if (btn.dataset.act === 'remove') {
-            await api('DELETE', '/friends/' + f.id);
-            loadFriends();
-          }
-        };
-      });
+        '</div><div class="sub">' + (f.hosting ? escapeHtml(f.hosting.name) : 'не хостит') + '</div>';
+      row.appendChild(info);
+      const actions = document.createElement('div');
+      if (f.hosting) {
+        const j = document.createElement('button');
+        j.className = 'btn-small'; j.textContent = 'Играть';
+        j.onclick = () => joinWorld(f.hosting);
+        actions.appendChild(j);
+      }
+      const rm = document.createElement('button');
+      rm.className = 'btn-tiny'; rm.textContent = 'Удалить'; rm.style.marginLeft = '6px';
+      rm.onclick = async () => { await api('DELETE', '/friends/' + f.id); loadFriends(); };
+      actions.appendChild(rm);
+      row.appendChild(actions);
       list.appendChild(row);
     });
-  } catch (e) {
-    list.innerHTML = '<div class="empty">Нет связи</div>';
-  }
+  } catch (e) { list.innerHTML = '<div class="empty">Нет связи</div>'; }
 }
 
 function onSearchFriends() {
   clearTimeout(searchTimer);
-  searchTimer = setTimeout(doSearchFriends, 300);
+  searchTimer = setTimeout(doSearchFriends, 280);
 }
 
 async function doSearchFriends() {
@@ -629,33 +593,27 @@ async function doSearchFriends() {
     const { r, data } = await api('GET', '/users/search?q=' + encodeURIComponent(q));
     if (!r.ok) { box.innerHTML = ''; return; }
     const users = data || [];
-    if (!users.length) {
-      box.innerHTML = '<div class="empty">Никого не найдено</div>';
-      return;
-    }
+    if (!users.length) { box.innerHTML = '<div class="empty">Никого не найдено</div>'; return; }
     box.innerHTML = '';
     users.forEach(u => {
       const row = document.createElement('div');
       row.className = 'user-row';
-      const label = u.is_friend ? 'В друзьях' : (u.is_blocked ? 'В ЧС' : 'Добавить');
-      const disabled = u.is_friend || u.is_blocked;
-      row.innerHTML =
-        '<div class="avatar">' + emoji(u.avatar) + '</div>' +
-        '<div class="user-info"><div class="name">' + escapeHtml(u.username) + '</div></div>' +
-        '<button class="btn-tiny friend"' + (disabled ? ' disabled style="opacity:0.5"' : '') + '>' + label + '</button>';
-      const btn = row.querySelector('button');
-      if (!disabled) {
-        btn.onclick = async () => {
-          await api('POST', '/friends/' + u.id);
-          doSearchFriends();
-          loadFriends();
-        };
+      const av = document.createElement('div'); av.className = 'avatar'; setAvatarEl(av, u); row.appendChild(av);
+      const info = document.createElement('div'); info.className = 'user-info';
+      info.innerHTML = '<div class="name">' + escapeHtml(u.username) + '</div>';
+      row.appendChild(info);
+      const btn = document.createElement('button');
+      btn.className = 'btn-tiny friend';
+      if (u.is_friend) { btn.textContent = 'В друзьях'; btn.disabled = true; btn.style.opacity = '.5'; }
+      else if (u.is_blocked) { btn.textContent = 'В ЧС'; btn.disabled = true; btn.style.opacity = '.5'; }
+      else {
+        btn.textContent = 'Добавить';
+        btn.onclick = async () => { await api('POST', '/friends/' + u.id); doSearchFriends(); loadFriends(); };
       }
+      row.appendChild(btn);
       box.appendChild(row);
     });
-  } catch (e) {
-    box.innerHTML = '<div class="empty">Ошибка поиска</div>';
-  }
+  } catch (e) { box.innerHTML = '<div class="empty">Ошибка поиска</div>'; }
 }
 
 async function loadBlocks() {
@@ -665,27 +623,22 @@ async function loadBlocks() {
     const { r, data } = await api('GET', '/blocks');
     if (!r.ok) { list.innerHTML = '<div class="empty">Ошибка</div>'; return; }
     const blocks = data || [];
-    if (!blocks.length) {
-      list.innerHTML = '<div class="empty">ЧС пуст</div>';
-      return;
-    }
+    if (!blocks.length) { list.innerHTML = '<div class="empty">Список пуст</div>'; return; }
     list.innerHTML = '';
     blocks.forEach(u => {
       const row = document.createElement('div');
       row.className = 'user-row';
-      row.innerHTML =
-        '<div class="avatar">' + emoji(u.avatar) + '</div>' +
-        '<div class="user-info"><div class="name">' + escapeHtml(u.username) + '</div></div>' +
-        '<button class="btn-tiny ok">Разбанить</button>';
-      row.querySelector('button').onclick = async () => {
-        await api('DELETE', '/blocks/' + u.id);
-        loadBlocks();
-      };
+      const av = document.createElement('div'); av.className = 'avatar'; setAvatarEl(av, u); row.appendChild(av);
+      const info = document.createElement('div'); info.className = 'user-info';
+      info.innerHTML = '<div class="name">' + escapeHtml(u.username) + '</div>';
+      row.appendChild(info);
+      const btn = document.createElement('button');
+      btn.className = 'btn-tiny ok'; btn.textContent = 'Разбанить';
+      btn.onclick = async () => { await api('DELETE', '/blocks/' + u.id); loadBlocks(); };
+      row.appendChild(btn);
       list.appendChild(row);
     });
-  } catch (e) {
-    list.innerHTML = '<div class="empty">Нет связи</div>';
-  }
+  } catch (e) { list.innerHTML = '<div class="empty">Нет связи</div>'; }
 }
 
 function closeModals() {
@@ -693,53 +646,24 @@ function closeModals() {
 }
 
 async function openServersModal() {
-  if (myWorldId) {
-    // host panel
-    document.getElementById('host-ping').textContent = '—';
-    const t0 = Date.now();
-    try {
-      await api('GET', '/health');
-      document.getElementById('host-ping').textContent = String(Date.now() - t0);
-    } catch(e) {}
-    const box = document.getElementById('host-players');
-    box.innerHTML = '<div class="user-row"><div class="avatar">' + emoji(user && user.avatar) + '</div><div class="user-info"><div class="name">Вы (хост)</div></div></div>';
-    // placeholder: real in-game players need native bridge
-    box.innerHTML += '<p class="subtitle">Список игроков в мире появится при интеграции с MC (оверлей). Кик/бан друзей уже работает через API.</p>';
-    document.getElementById('modal-host-panel').classList.add('show');
-    return;
-  }
   const list = document.getElementById('modal-server-list');
   list.innerHTML = '<div class="empty">Загрузка...</div>';
   document.getElementById('modal-servers').classList.add('show');
   try {
     const { r, data } = await api('GET', '/worlds');
     const worlds = (r.ok && data) || [];
-    if (!worlds.length) {
-      list.innerHTML = '<div class="empty">Нет активных хостов</div>';
-      return;
-    }
+    if (!worlds.length) { list.innerHTML = '<div class="empty">Нет активных хостов</div>'; return; }
     list.innerHTML = '';
     worlds.forEach(w => {
       const el = document.createElement('div');
       el.className = 'card';
       el.innerHTML = '<h3>' + escapeHtml(w.name) + '</h3><div class="meta">' +
-        emoji(w.owner_avatar) + ' ' + escapeHtml(w.owner_username) +
-        ' · ' + w.player_count + '/' + w.max_players +
+        escapeHtml(w.owner_username) + ' · ' + w.player_count + '/' + w.max_players +
         '</div><div class="row"><button class="btn-small">Играть</button></div>';
       el.querySelector('button').onclick = () => { closeModals(); joinWorld(w); };
       list.appendChild(el);
     });
-  } catch (e) {
-    list.innerHTML = '<div class="empty">Нет связи</div>';
-  }
-}
-
-function confirmHostYes() {
-  closeModals();
-  show('host');
-}
-function confirmHostNo() {
-  closeModals();
+  } catch (e) { list.innerHTML = '<div class="empty">Нет связи</div>'; }
 }
 
 if (token && user) show('worlds');
