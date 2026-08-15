@@ -38,16 +38,18 @@ TOKEN_DAYS = 7
 def _normalize_db_url(url: str) -> str:
     if not url:
         return ""
-    # Neon sometimes adds channel_binding which breaks pg8000
-    url = url.replace("&channel_binding=require", "").replace("?channel_binding=require", "")
-    url = url.replace("?channel_binding=prefer", "").replace("&channel_binding=prefer", "")
+    # Strip params that break pg8000
+    for junk in (
+        "channel_binding=require", "channel_binding=prefer",
+        "sslmode=require", "sslmode=prefer", "sslmode=verify-full",
+        "sslmode=verify-ca", "ssl=true",
+    ):
+        url = url.replace("&" + junk, "").replace("?" + junk, "?")
+    url = url.replace("?&", "?").rstrip("?&")
     if url.startswith("postgres://"):
         url = "postgresql://" + url[len("postgres://"):]
     if url.startswith("postgresql://") and "+pg8000" not in url:
         url = url.replace("postgresql://", "postgresql+pg8000://", 1)
-    # Ensure ssl for Neon
-    if "neon.tech" in url and "sslmode=" not in url:
-        url += ("&" if "?" in url else "?") + "sslmode=require"
     return url
 
 db_url = _normalize_db_url(DATABASE_URL)
@@ -61,9 +63,17 @@ if not db_url:
     print("CRITICAL:", DB_ERROR)
 else:
     try:
-        engine = create_engine(db_url, pool_pre_ping=True, pool_recycle=300, connect_args={})
+        import ssl as _ssl
+        ssl_ctx = _ssl.create_default_context()
+        # Neon needs TLS; don't verify hostname strictly on free tier sometimes
+        connect_args = {"ssl_context": ssl_ctx}
+        engine = create_engine(
+            db_url,
+            pool_pre_ping=True,
+            pool_recycle=300,
+            connect_args=connect_args,
+        )
         SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-        # test connection
         with engine.connect() as conn:
             conn.exec_driver_sql("SELECT 1")
         DB_OK = True
@@ -71,6 +81,18 @@ else:
     except Exception as e:
         DB_ERROR = f"{type(e).__name__}: {e}"
         print("CRITICAL DB connect failed:", DB_ERROR)
+        # fallback without custom ssl_context
+        try:
+            engine = create_engine(db_url, pool_pre_ping=True, pool_recycle=300)
+            SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+            with engine.connect() as conn:
+                conn.exec_driver_sql("SELECT 1")
+            DB_OK = True
+            DB_ERROR = None
+            print("DB connected OK (fallback)")
+        except Exception as e2:
+            DB_ERROR = f"{type(e2).__name__}: {e2}"
+            print("CRITICAL DB fallback also failed:", DB_ERROR)
 
 Base = declarative_base()
 
