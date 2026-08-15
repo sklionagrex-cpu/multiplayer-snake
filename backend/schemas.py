@@ -20,7 +20,7 @@ class UserOut(BaseModel):
     created_at: datetime
 
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 
 class Token(BaseModel):
@@ -32,13 +32,13 @@ class Token(BaseModel):
 # ---------- Миры ----------
 class WorldCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
-    description: str = Field(default="", max_length=500)
-    max_players: int = Field(default=5, ge=2, le=10)
+    description: str = ""
+    max_players: int = Field(5, ge=2, le=10)
 
 
 class WorldUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=100)
-    description: Optional[str] = Field(None, max_length=500)
+    description: Optional[str] = None
     player_count: Optional[int] = None
     is_active: Optional[bool] = None
     host_ip: Optional[str] = None
@@ -58,4 +58,4 @@ class WorldOut(BaseModel):
     updated_at: datetime
 
     class Config:
-        from_attributes = True
+        orm_mode = True

@@ -4,8 +4,11 @@ from config import get_settings
 
 settings = get_settings()
 
-# Убираем channel_binding если мешает
 db_url = settings.DATABASE_URL.replace("&channel_binding=require", "").replace("?channel_binding=require", "")
+
+# pg8000 — чистый Python, без компиляции (удобно для Termux)
+if db_url.startswith("postgresql://") and "+pg8000" not in db_url and "+psycopg" not in db_url:
+    db_url = db_url.replace("postgresql://", "postgresql+pg8000://", 1)
 
 engine = create_engine(
     db_url,

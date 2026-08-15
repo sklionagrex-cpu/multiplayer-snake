@@ -1,9 +1,9 @@
-from pydantic_settings import BaseSettings
+from pydantic import BaseSettings
 from functools import lru_cache
 
 
 class Settings(BaseSettings):
-    DATABASE_URL: str = "postgresql://user:pass@localhost/neondb"  # задай через переменную окружения DATABASE_URL
+    DATABASE_URL: str = "postgresql://user:pass@localhost/neondb"
     SECRET_KEY: str = "multiplayer-snake-secret-key-change-me-in-production-2026"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 дней

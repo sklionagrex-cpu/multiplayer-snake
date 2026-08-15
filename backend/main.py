@@ -46,7 +46,7 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     token = create_access_token(data={"sub": db_user.username})
     return Token(
         access_token=token,
-        user=UserOut.model_validate(db_user),
+        user=UserOut.from_orm(db_user),
     )
 
 
@@ -62,7 +62,7 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
     token = create_access_token(data={"sub": db_user.username})
     return Token(
         access_token=token,
-        user=UserOut.model_validate(db_user),
+        user=UserOut.from_orm(db_user),
     )
 
 
@@ -153,7 +153,7 @@ def update_world(
     if world.owner_id != current_user.id:
         raise HTTPException(status_code=403, detail="Нет прав на этот мир")
 
-    for field, value in data.model_dump(exclude_unset=True).items():
+    for field, value in data.dict(exclude_unset=True).items():
         setattr(world, field, value)
 
     db.commit()
