@@ -7,11 +7,9 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
@@ -22,21 +20,26 @@ jobs:
             git zip unzip openjdk-17-jdk python3-pip autoconf libtool \
             pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev \
             libtinfo5 cmake libffi-dev libssl-dev automake \
-            build-essential ccache
+            build-essential ccache libltdl-dev
 
-      - name: Install Buildozer & Cython
+      - name: Install Buildozer
         run: |
           pip install --upgrade pip
-          pip install "setuptools<70" wheel
-          pip install cython==0.29.36
+          pip install "setuptools==69.5.1" wheel
+          pip install cython==0.29.33
           pip install buildozer==1.5.0
 
       - name: Build APK
         working-directory: mobile
-        run: |
-          buildozer android debug
+        run: buildozer android debug
         env:
           BUILDOZER_WARN_ON_ROOT: "0"
+          P4A_RELEASE_ANDROID_SCALE_FACTOR: "1"
+
+      - name: List bin
+        if: always()
+        working-directory: mobile
+        run: ls -la bin || true; find . -name "*.apk" 2>/dev/null || true
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
