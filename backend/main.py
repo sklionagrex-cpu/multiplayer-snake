@@ -604,23 +604,34 @@ def create_world(user, db):
         return jsonify({"detail": "Название обязательно"}), 400
     max_players = max(2, min(10, max_players))
     try:
-        db.query(World).filter(World.owner_id == user.id, World.is_active == True).update(
-            {"is_active": False}, synchronize_session=False
-        )
-        db.flush()
         now = datetime.now(timezone.utc)
-        world = World(
-            name=name,
-            description=description,
-            owner_id=user.id,
-            max_players=max_players,
-            player_count=1,
-            is_active=True,
-            last_heartbeat=now,
-            host_ip=data.get("host_ip"),
-            host_port=data.get("host_port"),
+        # Strictly one active world per user: reuse existing active world
+        world = (
+            db.query(World)
+            .filter(World.owner_id == user.id, World.is_active == True)
+            .first()
         )
-        db.add(world)
+        if world:
+            world.name = name
+            world.description = description
+            world.max_players = max_players
+            world.player_count = 1
+            world.last_heartbeat = now
+            world.host_ip = data.get("host_ip")
+            world.host_port = data.get("host_port")
+        else:
+            world = World(
+                name=name,
+                description=description,
+                owner_id=user.id,
+                max_players=max_players,
+                player_count=1,
+                is_active=True,
+                last_heartbeat=now,
+                host_ip=data.get("host_ip"),
+                host_port=data.get("host_port"),
+            )
+            db.add(world)
         db.commit()
         db.refresh(world)
         _ = world.owner
@@ -687,6 +698,8 @@ def close_world(user, db, world_id):
         if world.owner_id != user.id:
             return jsonify({"detail": "Нет прав на этот мир"}), 403
         world.is_active = False
+        db.query(WorldPlayer).filter(WorldPlayer.world_id == world_id).delete(synchronize_session=False)
+        world.player_count = 0
         db.commit()
         return jsonify({"ok": True, "message": "Мир закрыт"})
     finally:
