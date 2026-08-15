@@ -260,7 +260,6 @@ public class OverlayService extends Service {
 
     /** Prefer live API: if I host → host panel, else servers list. */
     private void openCorrectPanel(final int screenW) {
-        toast("Загрузка…");
         new Thread(() -> {
             int hostId = 0;
             try {
@@ -489,8 +488,8 @@ public class OverlayService extends Service {
         URL url = new URL(apiBase().replaceAll("/$", "") + path);
         HttpURLConnection c = (HttpURLConnection) url.openConnection();
         c.setRequestMethod(method);
-        c.setConnectTimeout(8000);
-        c.setReadTimeout(8000);
+        c.setConnectTimeout(4000);
+        c.setReadTimeout(4000);
         c.setRequestProperty("Content-Type", "application/json");
         String tok = token();
         if (tok != null && !tok.isEmpty()) {
@@ -555,7 +554,7 @@ public class OverlayService extends Service {
                             }
                         }
                     } catch (Exception ignored) {}
-                    handler.postDelayed(friendPoll, 20000);
+                    handler.postDelayed(friendPoll, 30000);
                 }).start();
             }
         };

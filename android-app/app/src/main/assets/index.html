@@ -119,14 +119,6 @@
   }
   .nav button svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
   .nav button.active { color: var(--accent); }
-  .fab {
-    position: fixed; right: 16px; bottom: 78px; width: 48px; height: 48px;
-    border-radius: 14px; background: var(--card); border: 1px solid var(--line);
-    color: var(--accent); z-index: 60; display: none; align-items: center; justify-content: center;
-    box-shadow: 0 8px 24px rgba(0,0,0,.45); opacity: 0.5;
-  }
-  .fab.show { display: flex; }
-  .fab svg { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 1.7; }
   .modal-bg {
     display: none; position: fixed; inset: 0; background: rgba(0,0,0,.72);
     z-index: 100; align-items: flex-end; justify-content: center;
@@ -165,6 +157,21 @@
     font-size: 22px; font-weight: 700; letter-spacing: -0.02em;
   }
   .profile-actions { padding: 8px 18px 0; }
+
+  html, body { touch-action: manipulation; overscroll-behavior: none; }
+  * { -webkit-font-smoothing: antialiased; }
+  .screen, .card, .user-row, .modal, .nav {
+    contain: layout style;
+  }
+  .screen { will-change: contents; }
+  .btn, .btn-small, .btn-tiny, .icon-btn, .nav button {
+    transition: opacity 0.12s ease, transform 0.12s ease;
+  }
+  .btn:active, .btn-small:active, .btn-tiny:active, .icon-btn:active, .nav button:active {
+    opacity: 0.85; transform: scale(0.97);
+  }
+  .modal-bg { transition: opacity 0.15s ease; }
+  .modal { transition: transform 0.18s ease; }
   input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
   .pad { padding: 0 18px; }
 </style>
@@ -210,7 +217,7 @@
 <div class="screen" id="screen-worlds">
   <div class="topbar">
     <h2>Миры</h2>
-    <button class="icon-btn" onclick="loadWorlds()"><svg viewBox="0 0 24 24"><use href="#i-refresh"/></svg></button>
+    <button class="icon-btn" onclick="loadWorlds(true)"><svg viewBox="0 0 24 24"><use href="#i-refresh"/></svg></button>
   </div>
   <p class="subtitle" id="worlds-sub">Загрузка...</p>
   <div id="world-list"></div>
@@ -288,7 +295,6 @@
   <button id="nav-profile" onclick="show('profile')"><svg viewBox="0 0 24 24"><use href="#i-user"/></svg>Профиль</button>
 </div>
 
-<button class="fab" id="fab-snake" onclick="openServersModal()"><svg viewBox="0 0 24 24"><use href="#i-snake"/></svg></button>
 
 <div class="modal-bg" id="modal-servers" onclick="if(event.target===this)closeModals()">
   <div class="modal">
@@ -329,7 +335,6 @@ function show(name) {
   const nav = document.getElementById('main-nav');
   const authed = ['worlds','host','profile','avatar','friends','blocks'].includes(name);
   nav.style.display = authed ? 'flex' : 'none';
-  document.getElementById('fab-snake').classList.toggle('show', authed);
   document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
   if (name === 'friends') document.getElementById('nav-friends').classList.add('active');
   else if (name === 'profile' || name === 'avatar' || name === 'blocks') document.getElementById('nav-profile').classList.add('active');
@@ -376,10 +381,17 @@ async function api(method, path, body) {
   const opts = { method, headers: { 'Content-Type': 'application/json' } };
   if (token) opts.headers['Authorization'] = 'Bearer ' + token;
   if (body) opts.body = JSON.stringify(body);
-  const r = await fetch(API + path, opts);
-  let data = null;
-  try { data = await r.json(); } catch(e) {}
-  return { r, data };
+  const ctrl = new AbortController();
+  opts.signal = ctrl.signal;
+  const timer = setTimeout(() => ctrl.abort(), 10000);
+  try {
+    const r = await fetch(API + path, opts);
+    let data = null;
+    try { data = await r.json(); } catch(e) {}
+    return { r, data };
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function measureLanRtt() {
@@ -395,12 +407,15 @@ function startPresence(worldId, isHost) {
   stopPresence();
   joinedWorldId = worldId;
   if (isHost) myWorldId = worldId;
+  let _tickN = 0;
   const tick = async () => {
-    const rtt = await measureLanRtt();
+    _tickN++;
+    let rtt = lastLanRtt || 0;
+    if (_tickN % 3 === 1) rtt = await measureLanRtt();
     try { await api('POST', '/worlds/' + worldId + '/presence', { action: 'heartbeat', rtt_ms: rtt }); } catch (e) {}
   };
   tick();
-  presenceTimer = setInterval(tick, 8000);
+  presenceTimer = setInterval(tick, 12000);
 }
 
 function stopPresence() {
@@ -461,33 +476,46 @@ async function doRegister() {
   } catch (e) { setStatus('reg-status', 'Нет связи с сервером'); }
 }
 
-async function loadWorlds() {
+let _worldsCache = null, _worldsCacheAt = 0;
+async function loadWorlds(force) {
   const list = document.getElementById('world-list');
   const sub = document.getElementById('worlds-sub');
+  const now = Date.now();
+  if (!force && _worldsCache && (now - _worldsCacheAt) < 2500) {
+    renderWorldList(_worldsCache, list, sub);
+    return;
+  }
   sub.textContent = 'Обновление...';
-  list.innerHTML = '';
   try {
     const { r, data } = await api('GET', '/worlds');
     if (!r.ok) { sub.textContent = 'Не удалось загрузить'; return; }
     const worlds = data || [];
-    sub.textContent = worlds.length ? ('Открытых миров: ' + worlds.length) : 'Нет открытых миров';
-    if (!worlds.length) {
-      list.innerHTML = '<div class="empty">Пока тихо — открой свой мир</div>';
-      return;
-    }
-    worlds.forEach(w => {
-      const el = document.createElement('div');
-      el.className = 'card';
-      el.innerHTML =
-        '<h3>' + escapeHtml(w.name) + '</h3>' +
-        '<div class="desc">' + escapeHtml(w.description || '') + '</div>' +
-        '<div class="meta"><span class="host-dot"></span>' + escapeHtml(w.owner_username || '?') +
-        ' · ' + (w.player_count || 0) + '/' + (w.max_players || 5) + '</div>' +
-        '<div class="row"><button class="btn-small">Играть</button></div>';
-      el.querySelector('button').onclick = () => joinWorld(w);
-      list.appendChild(el);
-    });
+    _worldsCache = worlds;
+    _worldsCacheAt = Date.now();
+    renderWorldList(worlds, list, sub);
   } catch (e) { sub.textContent = 'Нет связи с сервером'; }
+}
+function renderWorldList(worlds, list, sub) {
+  list.innerHTML = '';
+  sub.textContent = worlds.length ? ('Открытых миров: ' + worlds.length) : 'Нет открытых миров';
+  if (!worlds.length) {
+    list.innerHTML = '<div class="empty">Пока тихо — открой свой мир</div>';
+    return;
+  }
+  const frag = document.createDocumentFragment();
+  worlds.forEach(w => {
+    const el = document.createElement('div');
+    el.className = 'card';
+    el.innerHTML =
+      '<h3>' + escapeHtml(w.name) + '</h3>' +
+      '<div class="desc">' + escapeHtml(w.description || '') + '</div>' +
+      '<div class="meta"><span class="host-dot"></span>' + escapeHtml(w.owner_username || '?') +
+      ' · ' + (w.player_count || 0) + '/' + (w.max_players || 5) + '</div>' +
+      '<div class="row"><button class="btn-small">Играть</button></div>';
+    el.querySelector('button').onclick = () => joinWorld(w);
+    frag.appendChild(el);
+  });
+  list.appendChild(frag);
 }
 
 async function joinWorld(w) {
