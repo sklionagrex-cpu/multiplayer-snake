@@ -303,7 +303,6 @@
     <h3 id="panel-title">Игроки в мире</h3>
     <p class="subtitle">Отклик: <b id="host-ping">—</b> мс</p>
     <div id="host-players"></div>
-    <button class="btn btn-danger" id="btn-stop-host" style="margin-top:12px;display:none" onclick="stopHosting()">Остановить хост</button>
     <button class="btn btn-ghost" onclick="closeModals()">Закрыть</button>
   </div>
 </div>
@@ -410,6 +409,10 @@ function stopPresence() {
   if (joinedWorldId) {
     api('POST', '/worlds/' + joinedWorldId + '/presence', { action: 'leave' }).catch(()=>{});
   }
+  try {
+    if (window.AndroidBridge && AndroidBridge.clearHostingWorld) AndroidBridge.clearHostingWorld();
+  } catch (e) {}
+  myWorldId = null;
 }
 
 function launchMinecraft() {
@@ -517,6 +520,11 @@ async function doHost() {
     if (!r.ok) { setStatus('host-status', (data && data.detail) || 'Ошибка'); return; }
     myWorldId = data.id;
     setStatus('host-status', 'Готово', true);
+    try {
+      if (window.AndroidBridge && AndroidBridge.saveHostingWorld) {
+        AndroidBridge.saveHostingWorld(data.id);
+      }
+    } catch (e) {}
     startHeartbeat();
     startPresence(data.id, true);
     try {
@@ -766,12 +774,10 @@ async function openPlayerPanel(worldId) {
   document.getElementById('host-ping').textContent = String(await measureLanRtt());
   const box = document.getElementById('host-players');
   box.innerHTML = '<div class="empty">Загрузка...</div>';
-  const stopBtn = document.getElementById('btn-stop-host');
   try {
     const { r, data } = await api('GET', '/worlds/' + worldId + '/players');
     if (!r.ok) { box.innerHTML = '<div class="empty">Ошибка</div>'; return; }
     const isOwner = data.is_owner;
-    stopBtn.style.display = isOwner ? 'block' : 'none';
     document.getElementById('panel-title').textContent = isOwner ? 'Панель хоста' : 'Игроки в мире';
     const players = data.players || [];
     if (!players.length) { box.innerHTML = '<div class="empty">Пока только ты</div>'; return; }

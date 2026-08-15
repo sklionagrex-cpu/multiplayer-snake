@@ -139,7 +139,11 @@ public class OverlayService extends Service {
                         v.setAlpha(0.5f);
                         if (!moved) {
                             if (modalRoot != null) closeModal();
-                            else showServersModal(screenW);
+                            else {
+                                int hostId = prefs().getInt("hosting_world_id", 0);
+                                if (hostId > 0) showHostPanel(screenW, hostId);
+                                else showServersModal(screenW);
+                            }
                         }
                         return true;
                     default:
@@ -189,20 +193,27 @@ public class OverlayService extends Service {
         closeModal();
         modalRoot = new LinearLayout(this);
         modalRoot.setOrientation(LinearLayout.VERTICAL);
-        modalRoot.setPadding(dp(14), dp(14), dp(14), dp(14));
+        modalRoot.setPadding(dp(12), dp(16), dp(12), dp(16));
         modalRoot.setBackground(cardBg());
 
-        int width = Math.min(screenW - dp(24), dp(360));
+        // Right vertical drawer ~35% width, full height
+        int width = Math.max(dp(140), (int) (screenW * 0.35f));
+        int height = getResources().getDisplayMetrics().heightPixels;
         WindowManager.LayoutParams lp = new WindowManager.LayoutParams(
             width,
-            WindowManager.LayoutParams.WRAP_CONTENT,
+            height,
             overlayType(),
             WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         );
-        lp.gravity = Gravity.CENTER;
+        lp.gravity = Gravity.TOP | Gravity.END;
 
-        modalRoot.addView(content);
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(content);
+        modalRoot.addView(scroll, new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.MATCH_PARENT));
+
         try {
             windowManager.addView(modalRoot, lp);
             if (fab != null) fab.setVisibility(View.GONE);
@@ -341,19 +352,6 @@ public class OverlayService extends Service {
         box.addView(scroll, new LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, dp(200)));
 
-        Button stop = actionBtn("Остановить хост", false);
-        stop.setTextColor(Color.parseColor("#f87171"));
-        stop.setOnClickListener(v -> new Thread(() -> {
-            try {
-                httpDelete("/worlds/" + worldId);
-            } catch (Exception ignored) {}
-            handler.post(() -> {
-                closeModal();
-                toast("Хост остановлен");
-            });
-        }).start());
-        box.addView(stop);
-
         Button close = actionBtn("Закрыть", false);
         close.setOnClickListener(v -> closeModal());
         box.addView(close);
@@ -430,7 +428,6 @@ public class OverlayService extends Service {
                             list.addView(row);
                         } catch (Exception ignored) {}
                     }
-                    if (!isOwner) stop.setVisibility(View.GONE);
                 });
             } catch (Exception e) {
                 handler.post(() -> ping.setText("Нет связи"));
@@ -496,6 +493,22 @@ public class OverlayService extends Service {
     }
 
     private void startFriendHostPolling() {
+        // Keep host alive while overlay is running (WebView timers may pause in background)
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                final int hostId = prefs().getInt("hosting_world_id", 0);
+                if (hostId > 0) {
+                    new Thread(() -> {
+                        try {
+                            httpPost("/worlds/" + hostId + "/heartbeat", "{\"player_count\":1}");
+                        } catch (Exception ignored) {}
+                    }).start();
+                }
+                handler.postDelayed(this, 20000);
+            }
+        }, 5000);
+
         friendPoll = new Runnable() {
             @Override
             public void run() {
@@ -567,6 +580,7 @@ public class OverlayService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent != null && "STOP".equals(intent.getAction())) {
+            stopHostingOnServer();
             stopSelf();
             return START_NOT_STICKY;
         }
@@ -578,9 +592,21 @@ public class OverlayService extends Service {
         return START_STICKY;
     }
 
+    private void stopHostingOnServer() {
+        final int hostId = prefs().getInt("hosting_world_id", 0);
+        if (hostId <= 0) return;
+        new Thread(() -> {
+            try {
+                httpDelete("/worlds/" + hostId);
+            } catch (Exception ignored) {}
+            prefs().edit().putInt("hosting_world_id", 0).apply();
+        }).start();
+    }
+
     @Override
     public void onDestroy() {
         super.onDestroy();
+        stopHostingOnServer();
         if (friendPoll != null) handler.removeCallbacks(friendPoll);
         closeModal();
         if (fab != null && windowManager != null) {

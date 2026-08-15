@@ -49,6 +49,18 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @JavascriptInterface
+        public void saveHostingWorld(int worldId) {
+            getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .putInt("hosting_world_id", worldId).apply();
+        }
+
+        @JavascriptInterface
+        public void clearHostingWorld() {
+            getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .putInt("hosting_world_id", 0).apply();
+        }
+
+        @JavascriptInterface
         public void launchMinecraft() {
             runOnUiThread(() -> {
                 if (tryLaunchMinecraft()) return;
