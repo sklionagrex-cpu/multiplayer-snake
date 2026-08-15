@@ -476,6 +476,23 @@ def list_friends(user, db):
         db.close()
 
 
+
+@app.get("/subscribers")
+@token_required
+def list_subscribers(user, db):
+    """People who added me (I am in their friends list)."""
+    try:
+        links = db.query(Friendship).filter(Friendship.friend_id == user.id).all()
+        result = []
+        for link in links:
+            sub = db.query(User).filter(User.id == link.user_id).first()
+            if sub:
+                result.append(user_to_dict(sub, {"is_subscriber": True}))
+        return jsonify(result)
+    finally:
+        db.close()
+
+
 @app.post("/friends/<int:friend_id>")
 @token_required
 def add_friend(user, db, friend_id):
@@ -490,13 +507,8 @@ def add_friend(user, db, friend_id):
         ).first()
         if exists:
             return jsonify({"detail": "Уже в друзьях", "user": user_to_dict(friend)})
+        # One-way: I follow them; they see me as subscriber
         db.add(Friendship(user_id=user.id, friend_id=friend_id))
-        # mutual optional — keep one-way for simplicity, or make mutual:
-        other = db.query(Friendship).filter(
-            Friendship.user_id == friend_id, Friendship.friend_id == user.id
-        ).first()
-        if not other:
-            db.add(Friendship(user_id=friend_id, friend_id=user.id))
         db.commit()
         return jsonify({"ok": True, "user": user_to_dict(friend, {"is_friend": True})})
     finally:
@@ -508,10 +520,7 @@ def add_friend(user, db, friend_id):
 def remove_friend(user, db, friend_id):
     try:
         db.query(Friendship).filter(
-            or_(
-                and_(Friendship.user_id == user.id, Friendship.friend_id == friend_id),
-                and_(Friendship.user_id == friend_id, Friendship.friend_id == user.id),
-            )
+            Friendship.user_id == user.id, Friendship.friend_id == friend_id
         ).delete(synchronize_session=False)
         db.commit()
         return jsonify({"ok": True})

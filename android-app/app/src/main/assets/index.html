@@ -270,6 +270,8 @@
   <div id="friend-search-results"></div>
   <p class="subtitle" style="margin-top:8px">Твои друзья</p>
   <div id="friend-list"></div>
+  <p class="subtitle" style="margin-top:16px">Подписчики</p>
+  <div id="subscriber-list"></div>
 </div>
 
 <div class="screen" id="screen-blocks">
@@ -597,7 +599,9 @@ async function savePhoto() {
 
 async function loadFriends() {
   const list = document.getElementById('friend-list');
+  const subs = document.getElementById('subscriber-list');
   list.innerHTML = '<div class="empty">Загрузка...</div>';
+  if (subs) subs.innerHTML = '';
   try {
     const { r, data } = await api('GET', '/friends');
     if (!r.ok) { list.innerHTML = '<div class="empty">Ошибка</div>'; return; }
@@ -627,6 +631,30 @@ async function loadFriends() {
       row.appendChild(actions);
       list.appendChild(row);
     });
+    // subscribers (one-way follows to me)
+    if (subs) {
+      const sr = await api('GET', '/subscribers');
+      if (sr.r.ok) {
+        const arr = sr.data || [];
+        if (!arr.length) subs.innerHTML = '<div class="empty">Нет подписчиков</div>';
+        else {
+          subs.innerHTML = '';
+          arr.forEach(u => {
+            const row = document.createElement('div');
+            row.className = 'user-row';
+            const av = document.createElement('div'); av.className = 'avatar'; setAvatarEl(av, u); row.appendChild(av);
+            const info = document.createElement('div'); info.className = 'user-info';
+            info.innerHTML = '<div class="name">' + escapeHtml(u.username) + '</div><div class="sub">подписчик</div>';
+            row.appendChild(info);
+            const btn = document.createElement('button');
+            btn.className = 'btn-tiny friend'; btn.textContent = 'В друзья';
+            btn.onclick = async () => { await api('POST', '/friends/' + u.id); loadFriends(); };
+            row.appendChild(btn);
+            subs.appendChild(row);
+          });
+        }
+      }
+    }
   } catch (e) { list.innerHTML = '<div class="empty">Нет связи</div>'; }
 }
 
@@ -785,8 +813,21 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-if (token && user) show('worlds');
-else show('login');
+// Overlay mode: open servers/player panel immediately
+const params = new URLSearchParams(location.search);
+const overlayMode = params.get('mode') === 'overlay';
+if (overlayMode) {
+  if (token && user) {
+    show('worlds');
+    setTimeout(function() { openServersModal(); }, 200);
+  } else {
+    show('login');
+  }
+} else if (token && user) {
+  show('worlds');
+} else {
+  show('login');
+}
 </script>
 </body>
 </html>
