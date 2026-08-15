@@ -1,26 +1,39 @@
 """
-Multiplayer Snake — бэкенд (Flask)
-Лаунчер мультиплеера для Minecraft PE 1.1.5
+Multiplayer Snake — бэкенд (Flask, без тяжёлых зависимостей)
+Работает в Termux / Python 3.14
 """
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 import os
+import hashlib
+import hmac
+import json
+import base64
+import secrets
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from jose import jwt, JWTError
-from passlib.context import CryptContext
 from sqlalchemy import create_engine, Column, Integer, String, Text, Boolean, DateTime, ForeignKey
 from sqlalchemy.orm import sessionmaker, declarative_base, relationship
 from sqlalchemy.sql import func
-from dotenv import load_dotenv
 
-load_dotenv()
+# ---------- .env вручную (без python-dotenv) ----------
+def load_env(path=".env"):
+    if not os.path.exists(path):
+        return
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            k, v = line.split("=", 1)
+            os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+
+load_env()
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:pass@localhost/neondb")
 SECRET_KEY = os.getenv("SECRET_KEY", "multiplayer-snake-secret-key-change-me-2026")
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7
+TOKEN_DAYS = 7
 
 db_url = DATABASE_URL.replace("&channel_binding=require", "").replace("?channel_binding=require", "")
 if db_url.startswith("postgresql://") and "+pg8000" not in db_url:
@@ -29,7 +42,6 @@ if db_url.startswith("postgresql://") and "+pg8000" not in db_url:
 engine = create_engine(db_url, pool_pre_ping=True, pool_recycle=300)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 app = Flask(__name__)
 CORS(app)
@@ -60,27 +72,69 @@ class World(Base):
     owner = relationship("User", back_populates="worlds")
 
 
-Base.metadata.create_all(bind=engine)
+try:
+    Base.metadata.create_all(bind=engine)
+except Exception as e:
+    print("Предупреждение при создании таблиц:", e)
 
 
 def get_db():
     return SessionLocal()
 
 
+# ---------- Пароли (stdlib) ----------
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    salt = secrets.token_hex(16)
+    h = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 100_000)
+    return salt + "$" + h.hex()
 
 
-def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+def verify_password(plain: str, stored: str) -> bool:
+    try:
+        salt, h = stored.split("$", 1)
+        check = hashlib.pbkdf2_hmac("sha256", plain.encode(), salt.encode(), 100_000).hex()
+        return hmac.compare_digest(check, h)
+    except Exception:
+        return False
+
+
+# ---------- Простой JWT (stdlib) ----------
+def _b64url(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).rstrip(b"=").decode()
+
+
+def _b64url_decode(s: str) -> bytes:
+    pad = "=" * (-len(s) % 4)
+    return base64.urlsafe_b64decode(s + pad)
 
 
 def create_token(username: str) -> str:
-    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    return jwt.encode({"sub": username, "exp": expire}, SECRET_KEY, algorithm=ALGORITHM)
+    header = _b64url(json.dumps({"alg": "HS256", "typ": "JWT"}).encode())
+    exp = int((datetime.now(timezone.utc) + timedelta(days=TOKEN_DAYS)).timestamp())
+    payload = _b64url(json.dumps({"sub": username, "exp": exp}).encode())
+    sig = hmac.new(SECRET_KEY.encode(), f"{header}.{payload}".encode(), hashlib.sha256).digest()
+    return f"{header}.{payload}.{_b64url(sig)}"
 
 
-def user_to_dict(u: User) -> dict:
+def decode_token(token: str):
+    try:
+        header_b, payload_b, sig_b = token.split(".")
+        expected = hmac.new(
+            SECRET_KEY.encode(), f"{header_b}.{payload_b}".encode(), hashlib.sha256
+        ).digest()
+        if not hmac.compare_digest(_b64url(expected), sig_b) and not hmac.compare_digest(expected, _b64url_decode(sig_b)):
+            # compare raw
+            if not hmac.compare_digest(expected, _b64url_decode(sig_b)):
+                return None
+        data = json.loads(_b64url_decode(payload_b))
+        if data.get("exp", 0) < datetime.now(timezone.utc).timestamp():
+            return None
+        return data
+    except Exception:
+        return None
+
+
+def user_to_dict(u):
     return {
         "id": u.id,
         "username": u.username,
@@ -88,7 +142,7 @@ def user_to_dict(u: User) -> dict:
     }
 
 
-def world_to_dict(w: World) -> dict:
+def world_to_dict(w):
     return {
         "id": w.id,
         "name": w.name,
@@ -109,22 +163,15 @@ def token_required(f):
         auth = request.headers.get("Authorization", "")
         if not auth.startswith("Bearer "):
             return jsonify({"detail": "Нужен токен"}), 401
-        token = auth[7:]
-        try:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-            username = payload.get("sub")
-            if not username:
-                return jsonify({"detail": "Неверный токен"}), 401
-        except JWTError:
+        data = decode_token(auth[7:])
+        if not data or not data.get("sub"):
             return jsonify({"detail": "Неверный токен"}), 401
-
         db = get_db()
-        user = db.query(User).filter(User.username == username).first()
+        user = db.query(User).filter(User.username == data["sub"]).first()
         if not user:
             db.close()
             return jsonify({"detail": "Пользователь не найден"}), 401
         return f(user, db, *args, **kwargs)
-
     return decorated
 
 
@@ -132,22 +179,20 @@ def token_required(f):
 def root():
     return {
         "name": "Multiplayer Snake",
-        "version": "0.2.0",
+        "version": "0.3.0",
         "description": "Лаунчер мультиплеера для Minecraft PE 1.1.5",
     }
 
 
 @app.post("/register")
 def register():
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
     username = (data.get("username") or "").strip()
     password = data.get("password") or ""
-
     if len(username) < 3:
         return jsonify({"detail": "Ник слишком короткий (мин. 3)"}), 400
     if len(password) < 4:
         return jsonify({"detail": "Пароль слишком короткий (мин. 4)"}), 400
-
     db = get_db()
     try:
         if db.query(User).filter(User.username == username).first():
@@ -156,9 +201,8 @@ def register():
         db.add(user)
         db.commit()
         db.refresh(user)
-        token = create_token(user.username)
         return jsonify({
-            "access_token": token,
+            "access_token": create_token(user.username),
             "token_type": "bearer",
             "user": user_to_dict(user),
         })
@@ -168,18 +212,16 @@ def register():
 
 @app.post("/login")
 def login():
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
     username = (data.get("username") or "").strip()
     password = data.get("password") or ""
-
     db = get_db()
     try:
         user = db.query(User).filter(User.username == username).first()
         if not user or not verify_password(password, user.password_hash):
             return jsonify({"detail": "Неверный ник или пароль"}), 401
-        token = create_token(user.username)
         return jsonify({
-            "access_token": token,
+            "access_token": create_token(user.username),
             "token_type": "bearer",
             "user": user_to_dict(user),
         })
@@ -214,22 +256,16 @@ def list_worlds():
 @app.post("/worlds")
 @token_required
 def create_world(user, db):
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
     name = (data.get("name") or "").strip()
     description = data.get("description") or ""
     max_players = int(data.get("max_players") or 5)
-
     if not name:
         db.close()
         return jsonify({"detail": "Название обязательно"}), 400
     max_players = max(2, min(10, max_players))
-
     try:
-        db.query(World).filter(
-            World.owner_id == user.id,
-            World.is_active == True,
-        ).update({"is_active": False})
-
+        db.query(World).filter(World.owner_id == user.id, World.is_active == True).update({"is_active": False})
         world = World(
             name=name,
             description=description,
@@ -250,27 +286,16 @@ def create_world(user, db):
 @app.route("/worlds/<int:world_id>", methods=["PATCH"])
 @token_required
 def update_world(user, db, world_id):
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
     try:
         world = db.query(World).filter(World.id == world_id).first()
         if not world:
             return jsonify({"detail": "Мир не найден"}), 404
         if world.owner_id != user.id:
             return jsonify({"detail": "Нет прав на этот мир"}), 403
-
-        if "name" in data and data["name"]:
-            world.name = data["name"]
-        if "description" in data:
-            world.description = data["description"]
-        if "player_count" in data:
-            world.player_count = data["player_count"]
-        if "is_active" in data:
-            world.is_active = data["is_active"]
-        if "host_ip" in data:
-            world.host_ip = data["host_ip"]
-        if "host_port" in data:
-            world.host_port = data["host_port"]
-
+        for key in ("name", "description", "player_count", "is_active", "host_ip", "host_port"):
+            if key in data:
+                setattr(world, key, data[key])
         db.commit()
         db.refresh(world)
         _ = world.owner
@@ -296,4 +321,6 @@ def close_world(user, db, world_id):
 
 
 if __name__ == "__main__":
+    print("Multiplayer Snake backend 0.3.0")
+    print("http://0.0.0.0:8000")
     app.run(host="0.0.0.0", port=8000, debug=False)
