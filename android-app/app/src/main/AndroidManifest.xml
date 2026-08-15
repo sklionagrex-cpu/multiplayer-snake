@@ -5,7 +5,9 @@
 
     <application
         android:allowBackup="true"
-        android:label="Multiplayer Snake"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
         android:supportsRtl="true"
         android:usesCleartextTraffic="true"
         android:theme="@style/Theme.Snake">

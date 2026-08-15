@@ -11,7 +11,7 @@ from kivymd.uix.button import MDRaisedButton
 from kivymd.uix.label import MDLabel
 from kivymd.uix.snackbar import Snackbar
 
-API_URL = os.environ.get("API_URL", "https://multiplayer-snake.onrender.com")
+API_URL = os.environ.get("API_URL", "https://snake-master-3pzr.onrender.com")
 TOKEN_FILE = "token.json"
 
 KV = """

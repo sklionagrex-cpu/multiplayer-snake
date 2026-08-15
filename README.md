@@ -22,7 +22,7 @@
 
 Папка `backend/` — Flask API. Нужен хостинг (Render) и `DATABASE_URL` (Neon).
 
-В приложении API по умолчанию: `https://multiplayer-snake.onrender.com`  
+В приложении API по умолчанию: `https://snake-master-3pzr.onrender.com`  
 (замени URL после деплоя на Render)
 
 ## Важно про Google Play
