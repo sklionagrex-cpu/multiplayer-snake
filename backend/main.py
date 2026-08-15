@@ -38,6 +38,7 @@ DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 SECRET_KEY = os.getenv("SECRET_KEY", "multiplayer-snake-secret-key-change-me-2026")
 TOKEN_DAYS = 7
 HOST_TIMEOUT_SEC = 90  # world disappears if no heartbeat
+PLAYER_TIMEOUT_SEC = 45  # player leaves list if no presence
 
 AVATARS = [
     "snake_green", "snake_blue", "snake_red", "snake_gold",
@@ -154,6 +155,18 @@ class WorldBan(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     __table_args__ = (UniqueConstraint("world_id", "user_id", name="uq_world_ban"),)
+
+
+class WorldPlayer(Base):
+    """Who is currently in a world (presence + reported RTT)"""
+    __tablename__ = "world_players"
+    id = Column(Integer, primary_key=True)
+    world_id = Column(Integer, ForeignKey("worlds.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    rtt_ms = Column(Integer, default=0)  # client-measured LAN-ish / local RTT
+    is_host = Column(Boolean, default=False)
+    last_seen = Column(DateTime(timezone=True), server_default=func.now())
+    __table_args__ = (UniqueConstraint("world_id", "user_id", name="uq_world_player"),)
 
 
 if engine is not None:
@@ -299,7 +312,7 @@ def deactivate_stale_worlds(db):
 def root():
     return {
         "name": "Multiplayer Snake",
-        "version": "0.4.0",
+        "version": "0.4.1",
         "description": "Лаунчер мультиплеера для Minecraft PE 1.1.5",
         "db_ok": DB_OK,
         "db_error": DB_ERROR,
@@ -742,6 +755,110 @@ def ban_from_world(user, db, world_id):
         ).delete(synchronize_session=False)
         db.commit()
         return jsonify({"ok": True, "action": "ban", "user": user_to_dict(target)})
+    finally:
+        db.close()
+
+
+
+
+@app.post("/worlds/<int:world_id>/presence")
+@token_required
+def world_presence(user, db, world_id):
+    """Join/leave/heartbeat presence in a world. Client sends rtt_ms (measured locally)."""
+    data = request.get_json(silent=True) or {}
+    action = (data.get("action") or "heartbeat").lower()
+    rtt_ms = int(data.get("rtt_ms") or 0)
+    rtt_ms = max(0, min(5000, rtt_ms))
+    try:
+        world = db.query(World).filter(World.id == world_id).first()
+        if not world or not world.is_active:
+            return jsonify({"detail": "Мир закрыт", "ok": False}), 404
+        # blocked?
+        blocked = db.query(Block).filter(
+            Block.blocker_id == world.owner_id, Block.blocked_id == user.id
+        ).first()
+        if blocked and user.id != world.owner_id:
+            return jsonify({"detail": "Вы в ЧС у хоста", "ok": False}), 403
+
+        if action == "leave":
+            db.query(WorldPlayer).filter(
+                WorldPlayer.world_id == world_id, WorldPlayer.user_id == user.id
+            ).delete(synchronize_session=False)
+            # update player_count
+            cnt = db.query(WorldPlayer).filter(WorldPlayer.world_id == world_id).count()
+            world.player_count = max(1, cnt)
+            db.commit()
+            return jsonify({"ok": True})
+
+        now = datetime.now(timezone.utc)
+        row = db.query(WorldPlayer).filter(
+            WorldPlayer.world_id == world_id, WorldPlayer.user_id == user.id
+        ).first()
+        is_host = world.owner_id == user.id
+        if not row:
+            row = WorldPlayer(
+                world_id=world_id, user_id=user.id,
+                rtt_ms=rtt_ms, is_host=is_host, last_seen=now
+            )
+            db.add(row)
+        else:
+            row.rtt_ms = rtt_ms
+            row.last_seen = now
+            row.is_host = is_host
+        if is_host:
+            world.last_heartbeat = now
+            world.is_active = True
+        # prune stale players
+        cutoff = now - timedelta(seconds=PLAYER_TIMEOUT_SEC)
+        db.query(WorldPlayer).filter(
+            WorldPlayer.world_id == world_id, WorldPlayer.last_seen < cutoff
+        ).delete(synchronize_session=False)
+        cnt = db.query(WorldPlayer).filter(WorldPlayer.world_id == world_id).count()
+        world.player_count = max(1, cnt)
+        db.commit()
+        return jsonify({"ok": True, "player_count": world.player_count})
+    finally:
+        db.close()
+
+
+@app.get("/worlds/<int:world_id>/players")
+@token_required
+def world_players(user, db, world_id):
+    try:
+        world = db.query(World).filter(World.id == world_id).first()
+        if not world:
+            return jsonify({"detail": "Мир не найден"}), 404
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(seconds=PLAYER_TIMEOUT_SEC)
+        rows = (
+            db.query(WorldPlayer)
+            .filter(WorldPlayer.world_id == world_id, WorldPlayer.last_seen >= cutoff)
+            .order_by(WorldPlayer.is_host.desc(), WorldPlayer.last_seen.desc())
+            .all()
+        )
+        # ensure host is listed
+        result = []
+        seen = set()
+        for row in rows:
+            u = db.query(User).filter(User.id == row.user_id).first()
+            if not u:
+                continue
+            seen.add(u.id)
+            result.append(user_to_dict(u, {
+                "rtt_ms": row.rtt_ms or 0,
+                "is_host": bool(row.is_host),
+                "last_seen": row.last_seen.isoformat() if row.last_seen else None,
+            }))
+        # if host missing from presence, still show
+        if world.owner_id not in seen and world.owner:
+            result.insert(0, user_to_dict(world.owner, {
+                "rtt_ms": 0, "is_host": True, "last_seen": None,
+            }))
+        return jsonify({
+            "world_id": world_id,
+            "players": result,
+            "is_owner": world.owner_id == user.id,
+        })
     finally:
         db.close()
 

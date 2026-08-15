@@ -290,14 +290,27 @@
   </div>
 </div>
 
+<div class="modal-bg" id="modal-host-panel" onclick="if(event.target===this)closeModals()">
+  <div class="modal">
+    <h3 id="panel-title">Игроки в мире</h3>
+    <p class="subtitle">Твой отклик (LAN): <b id="host-ping">—</b> мс</p>
+    <div id="host-players"></div>
+    <button class="btn btn-danger" id="btn-stop-host" style="margin-top:12px;display:none" onclick="stopHosting()">Остановить хост</button>
+    <button class="btn btn-ghost" onclick="closeModals()">Закрыть</button>
+  </div>
+</div>
+
 <script>
 const API = localStorage.getItem('api_url') || 'https://snake-master-3pzr.onrender.com';
 let token = localStorage.getItem('token') || '';
 let user = null;
 let pendingPhoto = null;
 let myWorldId = null;
+let joinedWorldId = null;
 let heartbeatTimer = null;
+let presenceTimer = null;
 let searchTimer = null;
+let lastLanRtt = 0;
 
 try { user = JSON.parse(localStorage.getItem('user') || 'null'); } catch(e) {}
 
@@ -334,7 +347,7 @@ function saveAuth(t, u) {
 }
 
 function doLogout() {
-  token = ''; user = null; myWorldId = null; stopHeartbeat();
+  token = ''; user = null; myWorldId = null; joinedWorldId = null; stopHeartbeat(); stopPresence();
   try { if (window.AndroidBridge) AndroidBridge.stopOverlay(); } catch(e) {}
   localStorage.removeItem('token'); localStorage.removeItem('user');
   show('login');
@@ -348,6 +361,44 @@ async function api(method, path, body) {
   let data = null;
   try { data = await r.json(); } catch(e) {}
   return { r, data };
+}
+
+
+async function measureLanRtt() {
+  const t0 = performance.now();
+  try {
+    await fetch(API + "/health", { cache: "no-store" });
+    lastLanRtt = Math.max(1, Math.round(performance.now() - t0));
+  } catch (e) {
+    lastLanRtt = lastLanRtt || 999;
+  }
+  return lastLanRtt;
+}
+
+function startPresence(worldId, isHost) {
+  stopPresence();
+  joinedWorldId = worldId;
+  if (isHost) myWorldId = worldId;
+  const tick = async () => {
+    const rtt = await measureLanRtt();
+    try {
+      await api("POST", "/worlds/" + worldId + "/presence", {
+        action: "heartbeat",
+        rtt_ms: rtt
+      });
+    } catch (e) {}
+  };
+  tick();
+  presenceTimer = setInterval(tick, 8000);
+}
+
+function stopPresence() {
+  if (presenceTimer) clearInterval(presenceTimer);
+  presenceTimer = null;
+  if (joinedWorldId) {
+    api("POST", "/worlds/" + joinedWorldId + "/presence", { action: "leave" }).catch(()=>{});
+  }
+  if (!myWorldId) joinedWorldId = null;
 }
 
 function launchMinecraft() {
@@ -454,6 +505,7 @@ async function joinWorld(w) {
     const { r, data } = await api('POST', '/worlds/' + w.id + '/join-check');
     if (!r.ok) { alert((data && data.detail) || 'Нельзя присоединиться'); return; }
   } catch (e) { alert('Нет связи'); return; }
+  startPresence(w.id, false);
   launchMinecraft();
 }
 
@@ -470,6 +522,7 @@ async function doHost() {
     myWorldId = data.id;
     setStatus('host-status', 'Мир открыт, запуск Minecraft...', true);
     startHeartbeat();
+    startPresence(data.id, true);
     setTimeout(launchMinecraft, 300);
   } catch (e) { setStatus('host-status', 'Нет связи с сервером'); }
 }
@@ -646,6 +699,11 @@ function closeModals() {
 }
 
 async function openServersModal() {
+  const wid = myWorldId || joinedWorldId;
+  if (wid) {
+    await openPlayerPanel(wid);
+    return;
+  }
   const list = document.getElementById('modal-server-list');
   list.innerHTML = '<div class="empty">Загрузка...</div>';
   document.getElementById('modal-servers').classList.add('show');
@@ -665,6 +723,75 @@ async function openServersModal() {
     });
   } catch (e) { list.innerHTML = '<div class="empty">Нет связи</div>'; }
 }
+
+async function openPlayerPanel(worldId) {
+  document.getElementById('modal-host-panel').classList.add('show');
+  const rtt = await measureLanRtt();
+  document.getElementById('host-ping').textContent = String(rtt);
+  const box = document.getElementById('host-players');
+  box.innerHTML = '<div class="empty">Загрузка...</div>';
+  const stopBtn = document.getElementById('btn-stop-host');
+  try {
+    const { r, data } = await api('GET', '/worlds/' + worldId + '/players');
+    if (!r.ok) { box.innerHTML = '<div class="empty">Ошибка</div>'; return; }
+    const isOwner = data.is_owner;
+    stopBtn.style.display = isOwner ? 'block' : 'none';
+    document.getElementById('panel-title').textContent = isOwner ? 'Панель хоста' : 'Игроки в мире';
+    const players = data.players || [];
+    if (!players.length) { box.innerHTML = '<div class="empty">Пока только ты</div>'; return; }
+    box.innerHTML = '';
+    players.forEach(p => {
+      const row = document.createElement('div');
+      row.className = 'user-row';
+      const av = document.createElement('div'); av.className = 'avatar'; setAvatarEl(av, p); row.appendChild(av);
+      const info = document.createElement('div'); info.className = 'user-info';
+      const tag = p.is_host ? ' · хост' : '';
+      info.innerHTML = '<div class="name">' + escapeHtml(p.username) + (p.id === (user && user.id) ? ' (вы)' : '') +
+        '</div><div class="sub">пинг ' + (p.rtt_ms || 0) + ' мс' + tag + '</div>';
+      row.appendChild(info);
+      const actions = document.createElement('div');
+      if (p.id !== (user && user.id)) {
+        const fr = document.createElement('button');
+        fr.className = 'btn-tiny friend'; fr.textContent = 'В друзья';
+        fr.onclick = async () => { await api('POST', '/friends/' + p.id); fr.textContent = '✓'; fr.disabled = true; };
+        actions.appendChild(fr);
+        if (isOwner && !p.is_host) {
+          const kick = document.createElement('button');
+          kick.className = 'btn-tiny'; kick.textContent = 'Кик'; kick.style.marginLeft = '4px';
+          kick.onclick = async () => {
+            await api('POST', '/worlds/' + worldId + '/kick', { user_id: p.id });
+            alert('Кик отправлен (игрок должен переподключиться)');
+          };
+          actions.appendChild(kick);
+          const ban = document.createElement('button');
+          ban.className = 'btn-tiny'; ban.textContent = 'Бан'; ban.style.marginLeft = '4px'; ban.style.color = 'var(--danger)';
+          ban.onclick = async () => {
+            await api('POST', '/worlds/' + worldId + '/ban', { user_id: p.id });
+            openPlayerPanel(worldId);
+          };
+          actions.appendChild(ban);
+        }
+      }
+      row.appendChild(actions);
+      box.appendChild(row);
+    });
+  } catch (e) {
+    box.innerHTML = '<div class="empty">Нет связи</div>';
+  }
+}
+
+async function stopHosting() {
+  stopPresence();
+  if (myWorldId) {
+    try { await api('DELETE', '/worlds/' + myWorldId); } catch(e) {}
+  }
+  myWorldId = null;
+  joinedWorldId = null;
+  stopHeartbeat();
+  closeModals();
+  show('worlds');
+}
+
 
 if (token && user) show('worlds');
 else show('login');
