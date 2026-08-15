@@ -321,6 +321,7 @@ def close_world(user, db, world_id):
 
 
 if __name__ == "__main__":
+    port = int(os.environ.get("PORT", "8000"))
     print("Multiplayer Snake backend 0.3.0")
-    print("http://0.0.0.0:8000")
-    app.run(host="0.0.0.0", port=8000, debug=False)
+    print("http://0.0.0.0:%s" % port)
+    app.run(host="0.0.0.0", port=port, debug=False)
