@@ -139,11 +139,7 @@ public class OverlayService extends Service {
                         v.setAlpha(0.5f);
                         if (!moved) {
                             if (modalRoot != null) closeModal();
-                            else {
-                                int hostId = prefs().getInt("hosting_world_id", 0);
-                                if (hostId > 0) showHostPanel(screenW, hostId);
-                                else showServersModal(screenW);
-                            }
+                            else openCorrectPanel(screenW);
                         }
                         return true;
                     default:

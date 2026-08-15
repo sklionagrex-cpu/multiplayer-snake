@@ -601,6 +601,31 @@ def list_worlds():
         db.close()
 
 
+
+@app.get("/worlds/mine")
+@token_required
+def my_active_world(user, db):
+    """Active world hosted by current user, or null."""
+    try:
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(seconds=HOST_TIMEOUT_SEC)
+        world = (
+            db.query(World)
+            .filter(
+                World.owner_id == user.id,
+                World.is_active == True,
+                World.last_heartbeat >= cutoff,
+            )
+            .first()
+        )
+        if not world:
+            return jsonify({"world": None})
+        _ = world.owner
+        return jsonify({"world": world_to_dict(world)})
+    finally:
+        db.close()
+
+
 @app.post("/worlds")
 @token_required
 def create_world(user, db):

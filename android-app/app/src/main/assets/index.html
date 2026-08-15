@@ -522,7 +522,7 @@ async function doHost() {
     setStatus('host-status', 'Готово', true);
     try {
       if (window.AndroidBridge && AndroidBridge.saveHostingWorld) {
-        AndroidBridge.saveHostingWorld(data.id);
+        AndroidBridge.saveHostingWorld(String(data.id));
       }
     } catch (e) {}
     startHeartbeat();
@@ -813,21 +813,7 @@ async function openPlayerPanel(worldId) {
   } catch (e) { box.innerHTML = '<div class="empty">Нет связи</div>'; }
 }
 
-async function stopHosting() {
-  const wid = myWorldId;
-  stopPresence();
-  stopHeartbeat();
-  if (wid) {
-    try { await api('DELETE', '/worlds/' + wid); } catch(e) {}
-  }
-  myWorldId = null;
-  joinedWorldId = null;
-  try { if (window.AndroidBridge) AndroidBridge.stopOverlay(); } catch(e) {}
-  closeModals();
-  show('worlds');
-}
 
-// When app resumes / visibility — if host left, close world immediately path is stopHosting
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
     if (myWorldId || joinedWorldId) loadWorlds();

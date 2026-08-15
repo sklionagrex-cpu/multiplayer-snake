@@ -55,6 +55,15 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @JavascriptInterface
+        public void saveHostingWorld(String worldIdStr) {
+            try {
+                int worldId = Integer.parseInt(worldIdStr);
+                getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                    .putInt("hosting_world_id", worldId).apply();
+            } catch (Exception ignored) {}
+        }
+
+        @JavascriptInterface
         public void clearHostingWorld() {
             getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
                 .putInt("hosting_world_id", 0).apply();
@@ -200,6 +209,31 @@ public class MainActivity extends AppCompatActivity {
             }
             filePathCallback.onReceiveValue(result);
             filePathCallback = null;
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Back in launcher = left the game session → stop hosting immediately
+        final SharedPreferences prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        final int hostId = prefs.getInt("hosting_world_id", 0);
+        final String token = prefs.getString("token", "");
+        final String api = prefs.getString("api_url", "https://snake-master-3pzr.onrender.com");
+        if (hostId > 0 && token != null && token.length() > 0) {
+            new Thread(() -> {
+                try {
+                    java.net.URL url = new java.net.URL(api.replaceAll("/$", "") + "/worlds/" + hostId);
+                    java.net.HttpURLConnection c = (java.net.HttpURLConnection) url.openConnection();
+                    c.setRequestMethod("DELETE");
+                    c.setRequestProperty("Authorization", "Bearer " + token);
+                    c.setConnectTimeout(5000);
+                    c.setReadTimeout(5000);
+                    c.getResponseCode();
+                    c.disconnect();
+                } catch (Exception ignored) {}
+                prefs.edit().putInt("hosting_world_id", 0).apply();
+            }).start();
         }
     }
 
