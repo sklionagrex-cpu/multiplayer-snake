@@ -24,179 +24,327 @@
     min-height: 100vh;
     line-height: 1.4;
   }
-  .screen { display: none; min-height: 100vh; padding: 20px; padding-bottom: 32px; }
+  .screen { display: none; min-height: 100vh; padding: 20px; padding-bottom: 40px; }
   .screen.active { display: block; }
-  .logo {
-    text-align: center;
-    margin: 28px 0 24px;
-  }
+  .logo { text-align: center; margin: 28px 0 24px; }
   .logo .snake { font-size: 48px; line-height: 1; }
-  .logo h1 {
-    font-size: 22px;
-    color: var(--accent);
-    margin-top: 8px;
-    letter-spacing: 0.5px;
-  }
+  .logo h1 { font-size: 22px; color: var(--accent); margin-top: 8px; }
   .logo p { color: var(--muted); font-size: 13px; margin-top: 4px; }
   .field {
-    width: 100%;
-    background: var(--card);
-    border: 1px solid #1f3320;
-    border-radius: 12px;
-    color: var(--text);
-    padding: 14px 16px;
-    font-size: 16px;
-    margin-bottom: 12px;
-    outline: none;
+    width: 100%; background: var(--card); border: 1px solid #1f3320;
+    border-radius: 12px; color: var(--text); padding: 14px 16px;
+    font-size: 16px; margin-bottom: 12px; outline: none;
   }
   .field:focus { border-color: var(--accent); }
   .btn {
-    width: 100%;
-    border: none;
-    border-radius: 12px;
-    padding: 14px;
-    font-size: 16px;
-    font-weight: 700;
-    cursor: pointer;
-    margin-top: 6px;
+    width: 100%; border: none; border-radius: 12px; padding: 14px;
+    font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 6px;
   }
   .btn-primary { background: var(--accent); color: #052e16; }
   .btn-primary:active { background: var(--accent-dim); }
-  .btn-ghost {
-    background: transparent;
-    color: var(--accent);
-    margin-top: 10px;
-  }
+  .btn-ghost { background: transparent; color: var(--accent); margin-top: 10px; }
+  .btn-danger { background: #3f1a1a; color: var(--danger); }
   .btn-small {
-    width: auto;
-    padding: 8px 16px;
-    font-size: 14px;
-    background: var(--accent);
-    color: #052e16;
-    border-radius: 10px;
-    border: none;
-    font-weight: 700;
+    width: auto; padding: 8px 14px; font-size: 13px; background: var(--accent);
+    color: #052e16; border-radius: 10px; border: none; font-weight: 700;
   }
+  .btn-tiny {
+    padding: 6px 10px; font-size: 12px; border-radius: 8px; border: none;
+    font-weight: 600; margin-left: 4px;
+  }
+  .btn-tiny.kick { background: #3d3a1a; color: #fbbf24; }
+  .btn-tiny.ban { background: #3f1a1a; color: var(--danger); }
+  .btn-tiny.friend { background: #1a2f3d; color: #38bdf8; }
+  .btn-tiny.ok { background: var(--card2); color: var(--accent); }
   .status { text-align: center; color: var(--danger); font-size: 13px; min-height: 20px; margin-top: 10px; }
   .status.ok { color: var(--accent); }
   .topbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 12px;
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; gap: 8px;
   }
-  .topbar h2 { font-size: 18px; color: var(--accent); }
+  .topbar h2 { font-size: 18px; color: var(--accent); flex: 1; }
   .icon-btn {
-    background: var(--card);
-    border: none;
-    color: var(--accent);
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
-    font-size: 18px;
+    background: var(--card); border: none; color: var(--accent);
+    width: 40px; height: 40px; border-radius: 10px; font-size: 18px; flex-shrink: 0;
   }
-  .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
+  .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 12px; }
   .card {
-    background: var(--card);
-    border: 1px solid #1f3320;
-    border-radius: var(--radius);
-    padding: 14px;
-    margin-bottom: 12px;
+    background: var(--card); border-radius: var(--radius); padding: 14px 16px;
+    margin-bottom: 10px; border: 1px solid #1a2a1a;
   }
-  .card h3 { color: var(--accent); font-size: 16px; margin-bottom: 4px; }
-  .card .desc { color: var(--muted); font-size: 13px; margin-bottom: 6px; }
-  .card .meta { color: var(--muted); font-size: 12px; margin-bottom: 10px; }
-  .card .row { display: flex; justify-content: flex-end; }
-  .fab-wrap { margin-top: 8px; }
-  .empty {
-    text-align: center;
-    color: var(--muted);
-    padding: 40px 16px;
-    font-size: 14px;
+  .card h3 { font-size: 16px; margin-bottom: 4px; }
+  .card .desc { color: var(--muted); font-size: 13px; margin-bottom: 8px; }
+  .card .meta { color: var(--muted); font-size: 12px; }
+  .card .row { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; flex-wrap: wrap; gap: 6px; }
+  .empty { text-align: center; color: var(--muted); padding: 32px 12px; font-size: 14px; }
+  .user-row {
+    display: flex; align-items: center; gap: 12px; padding: 12px;
+    background: var(--card); border-radius: 12px; margin-bottom: 8px;
   }
-  .pattern {
-    background-image:
-      radial-gradient(circle at 20% 20%, rgba(74,222,128,0.06) 0, transparent 40%),
-      radial-gradient(circle at 80% 0%, rgba(34,197,94,0.05) 0, transparent 35%);
+  .avatar {
+    width: 44px; height: 44px; border-radius: 12px; background: var(--card2);
+    display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0;
   }
+  .avatar.lg { width: 72px; height: 72px; font-size: 36px; border-radius: 18px; }
+  .user-info { flex: 1; min-width: 0; }
+  .user-info .name { font-weight: 700; font-size: 15px; }
+  .user-info .sub { color: var(--muted); font-size: 12px; }
+  .badge {
+    display: inline-block; background: #1a3d1a; color: var(--accent);
+    font-size: 11px; padding: 2px 8px; border-radius: 6px; margin-left: 6px;
+  }
+  .avatar-grid {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 12px 0;
+  }
+  .avatar-pick {
+    aspect-ratio: 1; border-radius: 12px; background: var(--card);
+    border: 2px solid transparent; font-size: 28px;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .avatar-pick.selected { border-color: var(--accent); background: var(--card2); }
+  .nav {
+    position: fixed; bottom: 0; left: 0; right: 0; background: #0d1a0d;
+    border-top: 1px solid #1a2a1a; display: flex; padding: 8px 4px; padding-bottom: max(8px, env(safe-area-inset-bottom));
+    z-index: 50;
+  }
+  .nav button {
+    flex: 1; background: none; border: none; color: var(--muted);
+    font-size: 11px; padding: 6px 2px; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  }
+  .nav button.active { color: var(--accent); }
+  .nav button span { font-size: 20px; }
+  .with-nav { padding-bottom: 72px; }
+  .modal-bg {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    z-index: 100; align-items: flex-end; justify-content: center;
+  }
+  .modal-bg.show { display: flex; }
+  .modal {
+    background: var(--card); border-radius: 20px 20px 0 0; padding: 20px;
+    width: 100%; max-width: 480px; max-height: 80vh; overflow-y: auto;
+  }
+  .modal h3 { color: var(--accent); margin-bottom: 12px; }
+  .modal .actions { display: flex; gap: 8px; margin-top: 16px; }
+  .modal .actions .btn { margin-top: 0; }
+  .host-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--accent);
+    display: inline-block; margin-right: 4px; animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .fab-snake {
+    position: fixed; right: 16px; bottom: 80px; width: 48px; height: 48px;
+    border-radius: 14px; background: rgba(26,43,26,0.92); border: 1px solid #2a4a2a;
+    color: var(--accent); font-size: 22px; z-index: 60;
+    display: none; align-items: center; justify-content: center;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  }
+  .fab-snake.show { display: flex; }
+  .fab-snake:active { transform: scale(0.94); }
 </style>
 </head>
-<body class="pattern">
-  <!-- LOGIN -->
-  <div id="login" class="screen active">
-    <div class="logo">
-      <div class="snake">🐍</div>
-      <h1>Multiplayer Snake</h1>
-      <p>Minecraft PE 1.1.5</p>
-    </div>
-    <input class="field" id="login-user" placeholder="Ник" autocomplete="username">
-    <input class="field" id="login-pass" type="password" placeholder="Пароль" autocomplete="current-password">
-    <button class="btn btn-primary" onclick="doLogin()">Войти</button>
-    <button class="btn btn-ghost" onclick="show('register')">Нет аккаунта? Регистрация</button>
-    <div class="status" id="login-status"></div>
-  </div>
+<body>
 
-  <!-- REGISTER -->
-  <div id="register" class="screen">
-    <div class="logo">
-      <div class="snake">🐍</div>
-      <h1>Регистрация</h1>
-    </div>
-    <input class="field" id="reg-user" placeholder="Ник">
-    <input class="field" id="reg-pass" type="password" placeholder="Пароль">
-    <input class="field" id="reg-pass2" type="password" placeholder="Повтори пароль">
-    <button class="btn btn-primary" onclick="doRegister()">Создать аккаунт</button>
-    <button class="btn btn-ghost" onclick="show('login')">Назад</button>
-    <div class="status" id="reg-status"></div>
+<!-- LOGIN -->
+<div class="screen active" id="screen-login">
+  <div class="logo">
+    <div class="snake">🐍</div>
+    <h1>Multiplayer Snake</h1>
+    <p>Minecraft PE 1.1.5</p>
   </div>
+  <input class="field" id="login-user" placeholder="Ник" autocomplete="username">
+  <input class="field" id="login-pass" type="password" placeholder="Пароль" autocomplete="current-password">
+  <button class="btn btn-primary" onclick="doLogin()">ВОЙТИ</button>
+  <button class="btn btn-ghost" onclick="show('register')">Регистрация</button>
+  <div class="status" id="login-status"></div>
+</div>
 
-  <!-- WORLDS -->
-  <div id="worlds" class="screen">
-    <div class="topbar">
-      <h2>🐍 Миры</h2>
-      <div>
-        <button class="icon-btn" onclick="loadWorlds()" title="Обновить">↻</button>
-        <button class="icon-btn" onclick="logout()" title="Выйти">⎋</button>
-      </div>
-    </div>
-    <div class="subtitle" id="worlds-sub">Загрузка...</div>
-    <div id="world-list"></div>
-    <div class="fab-wrap">
-      <button class="btn btn-primary" onclick="show('host')">+ Открыть свой мир</button>
-    </div>
+<!-- REGISTER -->
+<div class="screen" id="screen-register">
+  <div class="logo">
+    <div class="snake">🐍</div>
+    <h1>Регистрация</h1>
   </div>
+  <input class="field" id="reg-user" placeholder="Ник (мин. 3)">
+  <input class="field" id="reg-pass" type="password" placeholder="Пароль (мин. 4)">
+  <input class="field" id="reg-pass2" type="password" placeholder="Повтор пароля">
+  <button class="btn btn-primary" onclick="doRegister()">СОЗДАТЬ</button>
+  <button class="btn btn-ghost" onclick="show('login')">Назад</button>
+  <div class="status" id="reg-status"></div>
+</div>
 
-  <!-- HOST -->
-  <div id="host" class="screen">
-    <div class="topbar">
-      <h2>Открыть мир</h2>
-      <button class="icon-btn" onclick="show('worlds')">←</button>
-    </div>
-    <input class="field" id="host-name" placeholder="Название мира">
-    <input class="field" id="host-desc" placeholder="Описание">
-    <input class="field" id="host-max" type="number" value="5" placeholder="Макс. игроков">
-    <button class="btn btn-primary" onclick="doHost()">🐍 Открыть мир</button>
-    <div class="status" id="host-status"></div>
+<!-- WORLDS -->
+<div class="screen with-nav" id="screen-worlds">
+  <div class="topbar">
+    <h2>Миры</h2>
+    <button class="icon-btn" onclick="loadWorlds()" title="Обновить">↻</button>
   </div>
+  <p class="subtitle" id="worlds-sub">Загрузка...</p>
+  <div id="world-list"></div>
+  <button class="btn btn-primary" onclick="show('host')">+ Открыть свой мир</button>
+</div>
+
+<!-- HOST -->
+<div class="screen with-nav" id="screen-host">
+  <div class="topbar">
+    <button class="icon-btn" onclick="show('worlds')">←</button>
+    <h2>Открыть мир</h2>
+  </div>
+  <input class="field" id="host-name" placeholder="Название мира">
+  <input class="field" id="host-desc" placeholder="Описание (необязательно)">
+  <input class="field" id="host-max" type="number" value="5" min="2" max="10" placeholder="Макс. игроков">
+  <button class="btn btn-primary" onclick="doHost()">СОЗДАТЬ И ЗАПУСТИТЬ MC</button>
+  <div class="status" id="host-status"></div>
+  <p class="subtitle" style="margin-top:16px">После создания откроется Minecraft PE. Включи LAN в мире. Пока ты хост — мир виден в списке (~90 сек без heartbeat пропадёт).</p>
+</div>
+
+<!-- PROFILE -->
+<div class="screen with-nav" id="screen-profile">
+  <div class="topbar"><h2>Профиль</h2></div>
+  <div style="text-align:center;margin:16px 0">
+    <div class="avatar lg" id="profile-avatar">🐍</div>
+    <div style="font-size:18px;font-weight:700;margin-top:10px" id="profile-name">—</div>
+  </div>
+  <button class="btn btn-primary" onclick="show('avatar')">Сменить аватар</button>
+  <button class="btn btn-ghost" onclick="show('friends')">Друзья</button>
+  <button class="btn btn-ghost" onclick="show('blocks')">ЧС (чёрный список)</button>
+  <button class="btn btn-danger" style="margin-top:20px" onclick="doLogout()">Выйти</button>
+</div>
+
+<!-- AVATAR -->
+<div class="screen with-nav" id="screen-avatar">
+  <div class="topbar">
+    <button class="icon-btn" onclick="show('profile')">←</button>
+    <h2>Аватар</h2>
+  </div>
+  <div class="avatar-grid" id="avatar-grid"></div>
+  <button class="btn btn-primary" onclick="saveAvatar()">Сохранить</button>
+  <div class="status" id="avatar-status"></div>
+</div>
+
+<!-- FRIENDS -->
+<div class="screen with-nav" id="screen-friends">
+  <div class="topbar">
+    <button class="icon-btn" onclick="show('profile')">←</button>
+    <h2>Друзья</h2>
+  </div>
+  <input class="field" id="friend-search" placeholder="Поиск по нику..." oninput="onSearchFriends()">
+  <div id="friend-search-results"></div>
+  <p class="subtitle" style="margin-top:8px">Твои друзья</p>
+  <div id="friend-list"></div>
+</div>
+
+<!-- BLOCKS -->
+<div class="screen with-nav" id="screen-blocks">
+  <div class="topbar">
+    <button class="icon-btn" onclick="show('profile')">←</button>
+    <h2>Чёрный список</h2>
+  </div>
+  <p class="subtitle">Забаненные не смогут зайти на твои миры</p>
+  <div id="block-list"></div>
+</div>
+
+<!-- NAV -->
+<div class="nav" id="main-nav" style="display:none">
+  <button id="nav-worlds" onclick="show('worlds')"><span>🌍</span>Миры</button>
+  <button id="nav-friends" onclick="show('friends')"><span>👥</span>Друзья</button>
+  <button id="nav-profile" onclick="show('profile')"><span>👤</span>Профиль</button>
+</div>
+
+<!-- FAB snake (in-app hint / servers) -->
+<button class="fab-snake" id="fab-snake" onclick="openServersModal()" title="Серверы">🐍</button>
+
+<!-- Modal: servers -->
+<div class="modal-bg" id="modal-servers" onclick="if(event.target===this)closeModals()">
+  <div class="modal">
+    <h3>🐍 Активные серверы</h3>
+    <div id="modal-server-list"></div>
+    <button class="btn btn-ghost" onclick="closeModals()">Закрыть</button>
+  </div>
+</div>
+
+<!-- Modal: host confirm -->
+<div class="modal-bg" id="modal-host-ask" onclick="if(event.target===this)closeModals()">
+  <div class="modal">
+    <h3>Начать хост?</h3>
+    <p class="subtitle">Мир появится в общем списке. Другие смогут присоединиться.</p>
+    <div class="actions">
+      <button class="btn btn-primary" onclick="confirmHostYes()">Да</button>
+      <button class="btn btn-ghost" onclick="confirmHostNo()">Нет</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: host panel -->
+<div class="modal-bg" id="modal-host-panel" onclick="if(event.target===this)closeModals()">
+  <div class="modal">
+    <h3>Панель хоста</h3>
+    <p class="subtitle">Пинг: <span id="host-ping">—</span> мс</p>
+    <div id="host-players"></div>
+    <button class="btn btn-danger" style="margin-top:12px" onclick="stopHosting()">Остановить хост</button>
+    <button class="btn btn-ghost" onclick="closeModals()">Закрыть</button>
+  </div>
+</div>
 
 <script>
-// После деплоя бэкенда замени на свой URL Render
 const API = localStorage.getItem('api_url') || 'https://snake-master-3pzr.onrender.com';
 let token = localStorage.getItem('token') || '';
 let user = null;
+let selectedAvatar = 'snake_green';
+let myWorldId = null;
+let heartbeatTimer = null;
+let searchTimer = null;
+
+const AVATAR_EMOJI = {
+  snake_green: '🐍', snake_blue: '🔵', snake_red: '🔴', snake_gold: '✨',
+  creeper: '💣', steve: '🧱', alex: '🧡', enderman: '👁', diamond: '💎', pickaxe: '⛏'
+};
 
 try { user = JSON.parse(localStorage.getItem('user') || 'null'); } catch(e) {}
 
-function show(id) {
+function emoji(av) { return AVATAR_EMOJI[av] || '🐍'; }
+
+function show(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-  if (id === 'worlds') loadWorlds();
+  const el = document.getElementById('screen-' + name);
+  if (el) el.classList.add('active');
+  const nav = document.getElementById('main-nav');
+  const authed = ['worlds','host','profile','avatar','friends','blocks'].includes(name);
+  nav.style.display = authed ? 'flex' : 'none';
+  document.getElementById('fab-snake').classList.toggle('show', authed);
+  document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+  const navBtn = document.getElementById('nav-' + (name === 'host' || name === 'avatar' || name === 'blocks' ? (name==='host'?'worlds':name==='avatar'||name==='blocks'?'profile':name) : name));
+  if (name === 'friends') document.getElementById('nav-friends').classList.add('active');
+  else if (name === 'profile' || name === 'avatar' || name === 'blocks') document.getElementById('nav-profile').classList.add('active');
+  else if (authed) document.getElementById('nav-worlds').classList.add('active');
+
+  if (name === 'worlds') loadWorlds();
+  if (name === 'profile') renderProfile();
+  if (name === 'avatar') renderAvatarGrid();
+  if (name === 'friends') { loadFriends(); document.getElementById('friend-search').value = ''; document.getElementById('friend-search-results').innerHTML = ''; }
+  if (name === 'blocks') loadBlocks();
 }
 
 function setStatus(id, text, ok) {
   const el = document.getElementById(id);
+  if (!el) return;
   el.textContent = text || '';
   el.className = 'status' + (ok ? ' ok' : '');
+}
+
+function saveAuth(t, u) {
+  token = t;
+  user = u;
+  localStorage.setItem('token', t);
+  localStorage.setItem('user', JSON.stringify(u));
+}
+
+function doLogout() {
+  token = '';
+  user = null;
+  myWorldId = null;
+  stopHeartbeat();
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  show('login');
 }
 
 async function api(method, path, body) {
@@ -212,19 +360,30 @@ async function api(method, path, body) {
   return { r, data };
 }
 
-function saveAuth(t, u) {
-  token = t;
-  user = u;
-  localStorage.setItem('token', t);
-  localStorage.setItem('user', JSON.stringify(u));
-}
-
-function logout() {
-  token = '';
-  user = null;
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
-  show('login');
+function launchMinecraft() {
+  // Try common MCPE package intents via Android bridge if present
+  try {
+    if (window.AndroidBridge && AndroidBridge.launchMinecraft) {
+      AndroidBridge.launchMinecraft();
+      return;
+    }
+  } catch(e) {}
+  // Fallback: intent URL (works on many devices)
+  const intents = [
+    'minecraft://',
+    'intent://#Intent;package=com.mojang.minecraftpe;end',
+    'intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=com.mojang.minecraftpe;end'
+  ];
+  for (const u of intents) {
+    try {
+      const a = document.createElement('a');
+      a.href = u;
+      a.click();
+      break;
+    } catch(e) {}
+  }
+  // last resort
+  try { window.location.href = 'minecraft://'; } catch(e) {}
 }
 
 async function doLogin() {
@@ -238,7 +397,6 @@ async function doLogin() {
       return;
     }
     saveAuth(data.access_token, data.user);
-    setStatus('login-status', '');
     show('worlds');
   } catch (e) {
     setStatus('login-status', 'Нет связи с сервером');
@@ -261,11 +419,17 @@ async function doRegister() {
       return;
     }
     saveAuth(data.access_token, data.user);
-    setStatus('reg-status', '');
     show('worlds');
   } catch (e) {
     setStatus('reg-status', 'Нет связи с сервером');
   }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function escapeAttr(s) {
+  return String(s).replace(/"/g, '&quot;');
 }
 
 async function loadWorlds() {
@@ -291,17 +455,30 @@ async function loadWorlds() {
       el.innerHTML =
         '<h3>' + escapeHtml(w.name) + '</h3>' +
         '<div class="desc">' + escapeHtml(w.description || 'Без описания') + '</div>' +
-        '<div class="meta">Хост: ' + escapeHtml(w.owner_username || '?') +
+        '<div class="meta"><span class="host-dot"></span>' + emoji(w.owner_avatar) + ' ' + escapeHtml(w.owner_username || '?') +
         ' · ' + (w.player_count || 0) + '/' + (w.max_players || 5) + '</div>' +
-        '<div class="row"><button class="btn-small" data-name="' + escapeAttr(w.name) + '">Играть</button></div>';
-      el.querySelector('button').onclick = function() {
-        alert('Открой Minecraft PE 1.1.5 → Играть → Друзья / LAN\\nМир: ' + w.name + '\\n\\n(Подключение через LAN будет в следующем обновлении)');
-      };
+        '<div class="row"><button class="btn-small">Играть</button></div>';
+      el.querySelector('button').onclick = function() { joinWorld(w); };
       list.appendChild(el);
     });
   } catch (e) {
     sub.textContent = 'Нет связи с сервером';
   }
+}
+
+async function joinWorld(w) {
+  try {
+    const { r, data } = await api('POST', '/worlds/' + w.id + '/join-check');
+    if (!r.ok) {
+      alert((data && data.detail) || 'Нельзя присоединиться');
+      return;
+    }
+  } catch (e) {
+    alert('Нет связи');
+    return;
+  }
+  alert('Открой Minecraft PE 1.1.5 → Друзья / LAN\\nМир: ' + w.name + '\\nХост: ' + w.owner_username + '\\n\\nЗапускаем Minecraft...');
+  launchMinecraft();
 }
 
 async function doHost() {
@@ -320,21 +497,253 @@ async function doHost() {
       setStatus('host-status', (data && data.detail) || 'Ошибка');
       return;
     }
-    setStatus('host-status', 'Мир открыт!', true);
-    setTimeout(function() { show('worlds'); }, 600);
+    myWorldId = data.id;
+    setStatus('host-status', 'Мир открыт! Запуск MC...', true);
+    startHeartbeat();
+    setTimeout(function() { launchMinecraft(); }, 400);
   } catch (e) {
     setStatus('host-status', 'Нет связи с сервером');
   }
 }
 
-function escapeHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-function escapeAttr(s) {
-  return String(s).replace(/"/g, '&quot;');
+function startHeartbeat() {
+  stopHeartbeat();
+  if (!myWorldId) return;
+  heartbeatTimer = setInterval(async () => {
+    try {
+      await api('POST', '/worlds/' + myWorldId + '/heartbeat', { player_count: 1 });
+    } catch (e) {}
+  }, 30000);
+  // first beat
+  api('POST', '/worlds/' + myWorldId + '/heartbeat', { player_count: 1 }).catch(()=>{});
 }
 
-if (token) show('worlds');
+function stopHeartbeat() {
+  if (heartbeatTimer) clearInterval(heartbeatTimer);
+  heartbeatTimer = null;
+}
+
+async function stopHosting() {
+  if (myWorldId) {
+    try { await api('DELETE', '/worlds/' + myWorldId); } catch(e) {}
+  }
+  myWorldId = null;
+  stopHeartbeat();
+  closeModals();
+  show('worlds');
+}
+
+function renderProfile() {
+  if (!user) return;
+  document.getElementById('profile-name').textContent = user.username;
+  document.getElementById('profile-avatar').textContent = emoji(user.avatar);
+}
+
+function renderAvatarGrid() {
+  selectedAvatar = (user && user.avatar) || 'snake_green';
+  const grid = document.getElementById('avatar-grid');
+  grid.innerHTML = '';
+  Object.keys(AVATAR_EMOJI).forEach(key => {
+    const d = document.createElement('div');
+    d.className = 'avatar-pick' + (key === selectedAvatar ? ' selected' : '');
+    d.textContent = AVATAR_EMOJI[key];
+    d.onclick = () => {
+      selectedAvatar = key;
+      renderAvatarGrid();
+    };
+    grid.appendChild(d);
+  });
+}
+
+async function saveAvatar() {
+  setStatus('avatar-status', 'Сохранение...');
+  try {
+    const { r, data } = await api('PATCH', '/me', { avatar: selectedAvatar });
+    if (!r.ok) {
+      setStatus('avatar-status', (data && data.detail) || 'Ошибка');
+      return;
+    }
+    user = data;
+    localStorage.setItem('user', JSON.stringify(user));
+    setStatus('avatar-status', 'Сохранено', true);
+    setTimeout(() => show('profile'), 500);
+  } catch (e) {
+    setStatus('avatar-status', 'Нет связи');
+  }
+}
+
+async function loadFriends() {
+  const list = document.getElementById('friend-list');
+  list.innerHTML = '<div class="empty">Загрузка...</div>';
+  try {
+    const { r, data } = await api('GET', '/friends');
+    if (!r.ok) {
+      list.innerHTML = '<div class="empty">Ошибка</div>';
+      return;
+    }
+    const friends = data || [];
+    if (!friends.length) {
+      list.innerHTML = '<div class="empty">Пока нет друзей — найди по нику сверху</div>';
+      return;
+    }
+    list.innerHTML = '';
+    friends.forEach(f => {
+      const row = document.createElement('div');
+      row.className = 'user-row';
+      let actions = '<button class="btn-tiny ok" data-act="remove">Удалить</button>';
+      if (f.hosting) {
+        actions = '<button class="btn-small" data-act="join">Присоединиться</button> ' + actions;
+      }
+      row.innerHTML =
+        '<div class="avatar">' + emoji(f.avatar) + '</div>' +
+        '<div class="user-info"><div class="name">' + escapeHtml(f.username) +
+        (f.hosting ? '<span class="badge"><span class="host-dot"></span>хост</span>' : '') +
+        '</div><div class="sub">' + (f.hosting ? escapeHtml(f.hosting.name) : 'оффлайн') + '</div></div>' +
+        '<div>' + actions + '</div>';
+      row.querySelectorAll('button').forEach(btn => {
+        btn.onclick = async () => {
+          if (btn.dataset.act === 'join') joinWorld(f.hosting);
+          if (btn.dataset.act === 'remove') {
+            await api('DELETE', '/friends/' + f.id);
+            loadFriends();
+          }
+        };
+      });
+      list.appendChild(row);
+    });
+  } catch (e) {
+    list.innerHTML = '<div class="empty">Нет связи</div>';
+  }
+}
+
+function onSearchFriends() {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(doSearchFriends, 300);
+}
+
+async function doSearchFriends() {
+  const q = document.getElementById('friend-search').value.trim();
+  const box = document.getElementById('friend-search-results');
+  if (q.length < 1) { box.innerHTML = ''; return; }
+  try {
+    const { r, data } = await api('GET', '/users/search?q=' + encodeURIComponent(q));
+    if (!r.ok) { box.innerHTML = ''; return; }
+    const users = data || [];
+    if (!users.length) {
+      box.innerHTML = '<div class="empty">Никого не найдено</div>';
+      return;
+    }
+    box.innerHTML = '';
+    users.forEach(u => {
+      const row = document.createElement('div');
+      row.className = 'user-row';
+      const label = u.is_friend ? 'В друзьях' : (u.is_blocked ? 'В ЧС' : 'Добавить');
+      const disabled = u.is_friend || u.is_blocked;
+      row.innerHTML =
+        '<div class="avatar">' + emoji(u.avatar) + '</div>' +
+        '<div class="user-info"><div class="name">' + escapeHtml(u.username) + '</div></div>' +
+        '<button class="btn-tiny friend"' + (disabled ? ' disabled style="opacity:0.5"' : '') + '>' + label + '</button>';
+      const btn = row.querySelector('button');
+      if (!disabled) {
+        btn.onclick = async () => {
+          await api('POST', '/friends/' + u.id);
+          doSearchFriends();
+          loadFriends();
+        };
+      }
+      box.appendChild(row);
+    });
+  } catch (e) {
+    box.innerHTML = '<div class="empty">Ошибка поиска</div>';
+  }
+}
+
+async function loadBlocks() {
+  const list = document.getElementById('block-list');
+  list.innerHTML = '<div class="empty">Загрузка...</div>';
+  try {
+    const { r, data } = await api('GET', '/blocks');
+    if (!r.ok) { list.innerHTML = '<div class="empty">Ошибка</div>'; return; }
+    const blocks = data || [];
+    if (!blocks.length) {
+      list.innerHTML = '<div class="empty">ЧС пуст</div>';
+      return;
+    }
+    list.innerHTML = '';
+    blocks.forEach(u => {
+      const row = document.createElement('div');
+      row.className = 'user-row';
+      row.innerHTML =
+        '<div class="avatar">' + emoji(u.avatar) + '</div>' +
+        '<div class="user-info"><div class="name">' + escapeHtml(u.username) + '</div></div>' +
+        '<button class="btn-tiny ok">Разбанить</button>';
+      row.querySelector('button').onclick = async () => {
+        await api('DELETE', '/blocks/' + u.id);
+        loadBlocks();
+      };
+      list.appendChild(row);
+    });
+  } catch (e) {
+    list.innerHTML = '<div class="empty">Нет связи</div>';
+  }
+}
+
+function closeModals() {
+  document.querySelectorAll('.modal-bg').forEach(m => m.classList.remove('show'));
+}
+
+async function openServersModal() {
+  if (myWorldId) {
+    // host panel
+    document.getElementById('host-ping').textContent = '—';
+    const t0 = Date.now();
+    try {
+      await api('GET', '/health');
+      document.getElementById('host-ping').textContent = String(Date.now() - t0);
+    } catch(e) {}
+    const box = document.getElementById('host-players');
+    box.innerHTML = '<div class="user-row"><div class="avatar">' + emoji(user && user.avatar) + '</div><div class="user-info"><div class="name">Вы (хост)</div></div></div>';
+    // placeholder: real in-game players need native bridge
+    box.innerHTML += '<p class="subtitle">Список игроков в мире появится при интеграции с MC (оверлей). Кик/бан друзей уже работает через API.</p>';
+    document.getElementById('modal-host-panel').classList.add('show');
+    return;
+  }
+  const list = document.getElementById('modal-server-list');
+  list.innerHTML = '<div class="empty">Загрузка...</div>';
+  document.getElementById('modal-servers').classList.add('show');
+  try {
+    const { r, data } = await api('GET', '/worlds');
+    const worlds = (r.ok && data) || [];
+    if (!worlds.length) {
+      list.innerHTML = '<div class="empty">Нет активных хостов</div>';
+      return;
+    }
+    list.innerHTML = '';
+    worlds.forEach(w => {
+      const el = document.createElement('div');
+      el.className = 'card';
+      el.innerHTML = '<h3>' + escapeHtml(w.name) + '</h3><div class="meta">' +
+        emoji(w.owner_avatar) + ' ' + escapeHtml(w.owner_username) +
+        ' · ' + w.player_count + '/' + w.max_players +
+        '</div><div class="row"><button class="btn-small">Играть</button></div>';
+      el.querySelector('button').onclick = () => { closeModals(); joinWorld(w); };
+      list.appendChild(el);
+    });
+  } catch (e) {
+    list.innerHTML = '<div class="empty">Нет связи</div>';
+  }
+}
+
+function confirmHostYes() {
+  closeModals();
+  show('host');
+}
+function confirmHostNo() {
+  closeModals();
+}
+
+if (token && user) show('worlds');
+else show('login');
 </script>
 </body>
 </html>
