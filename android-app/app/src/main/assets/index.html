@@ -128,17 +128,18 @@
 
   /* Profile card */
   .skin-frame {
-    width: 140px; height: 180px; margin: 8px auto 16px;
+    width: 160px; height: 220px; margin: 8px auto 16px;
     border: 3px solid var(--line);
     box-shadow: 0 0 16px rgba(0,255,100,.2), inset 0 0 20px rgba(0,0,0,.5);
-    background: #020805;
+    background:
+      repeating-conic-gradient(#0a1a10 0% 25%, #061208 0% 50%) 0 0 / 16px 16px;
     position: relative; overflow: hidden;
     cursor: pointer;
   }
   .skin-frame img {
     width: 100%; height: 100%; object-fit: contain;
     image-rendering: pixelated;
-    background: #020805;
+    image-rendering: crisp-edges;
   }
   .skin-frame .ph {
     position: absolute; inset: 0;
@@ -740,6 +741,70 @@ function pickSkinGallery() {
   document.getElementById('skin-file').click();
 }
 
+/**
+ * Render Minecraft skin texture (64x64 or 64x32) onto a front-facing
+ * character like NameMC — not the raw texture sheet.
+ */
+function renderSkinAsCharacter(skinImg) {
+  const sw = skinImg.width, sh = skinImg.height;
+  // normalize to offscreen 64x64
+  const tex = document.createElement('canvas');
+  tex.width = 64; tex.height = 64;
+  const tctx = tex.getContext('2d');
+  tctx.imageSmoothingEnabled = false;
+  if (sh === 32) {
+    // old format: copy top half, mirror legs/arms for bottom
+    tctx.drawImage(skinImg, 0, 0, 64, 32, 0, 0, 64, 32);
+    // legs
+    tctx.drawImage(skinImg, 0, 16, 16, 16, 16, 48, 16, 16);
+    // arm
+    tctx.drawImage(skinImg, 40, 16, 16, 16, 32, 48, 16, 16);
+  } else {
+    tctx.drawImage(skinImg, 0, 0, 64, 64, 0, 0, 64, 64);
+  }
+
+  function blit(sx, sy, sww, shh, dx, dy, dw, dh) {
+    ctx.drawImage(tex, sx, sy, sww, shh, dx, dy, dw, dh);
+  }
+
+  // Output: tall portrait of full body front
+  const scale = 8; // 8px per skin pixel → sharp
+  const outW = 16 * scale;  // 4+8+4 body width in skin px
+  const outH = 32 * scale;  // head 8 + body 12 + legs 12
+  const canvas = document.createElement('canvas');
+  canvas.width = outW;
+  canvas.height = outH;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  // transparent bg
+  ctx.clearRect(0, 0, outW, outH);
+
+  const px = scale;
+  // Layout (skin pixels): head 8x8 at top center, body 8x12, arms 4x12, legs 4x12
+  // Head front (8,8)
+  blit(8, 8, 8, 8, 4*px, 0, 8*px, 8*px);
+  // Head overlay (40,8) if present
+  blit(40, 8, 8, 8, 4*px, 0, 8*px, 8*px);
+  // Body front (20,20)
+  blit(20, 20, 8, 12, 4*px, 8*px, 8*px, 12*px);
+  // Body overlay (20,36)
+  blit(20, 36, 8, 12, 4*px, 8*px, 8*px, 12*px);
+  // Right arm front (44,20) — viewer left
+  blit(44, 20, 4, 12, 0, 8*px, 4*px, 12*px);
+  blit(44, 36, 4, 12, 0, 8*px, 4*px, 12*px);
+  // Left arm front (36,52)
+  blit(36, 52, 4, 12, 12*px, 8*px, 4*px, 12*px);
+  blit(52, 52, 4, 12, 12*px, 8*px, 4*px, 12*px);
+  // Right leg (4,20)
+  blit(4, 20, 4, 12, 4*px, 20*px, 4*px, 12*px);
+  blit(4, 36, 4, 12, 4*px, 20*px, 4*px, 12*px);
+  // Left leg (20,52)
+  blit(20, 52, 4, 12, 8*px, 20*px, 4*px, 12*px);
+  blit(4, 52, 4, 12, 8*px, 20*px, 4*px, 12*px);
+
+  return canvas.toDataURL('image/png');
+}
+
 document.getElementById('skin-file').addEventListener('change', function(ev) {
   const file = ev.target.files && ev.target.files[0];
   if (!file) return;
@@ -747,21 +812,36 @@ document.getElementById('skin-file').addEventListener('change', function(ev) {
   reader.onload = () => {
     const img = new Image();
     img.onload = async () => {
-      const max = 256;
-      let w = img.width, h = img.height;
-      if (w > h) { if (w > max) { h = h * max / w; w = max; } }
-      else { if (h > max) { w = w * max / h; h = max; } }
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.round(w); canvas.height = Math.round(h);
-      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
-      setStatus('profile-status', 'Сохранение скина...');
+      setStatus('profile-status', 'Рендер скина...');
+      let dataUrl;
+      try {
+        // If looks like MC skin texture (64x32 or 64x64), render on character
+        if ((img.width === 64 && (img.height === 64 || img.height === 32)) ||
+            (img.width === 128 && (img.height === 128 || img.height === 64))) {
+          dataUrl = renderSkinAsCharacter(img);
+        } else {
+          // Not a skin sheet — still try as texture if roughly square power of 2
+          // Scale down to 64 and attempt character render
+          const tmp = document.createElement('canvas');
+          tmp.width = 64; tmp.height = 64;
+          const c = tmp.getContext('2d');
+          c.imageSmoothingEnabled = false;
+          c.drawImage(img, 0, 0, 64, 64);
+          const fake = new Image();
+          await new Promise((res, rej) => { fake.onload = res; fake.onerror = rej; fake.src = tmp.toDataURL(); });
+          dataUrl = renderSkinAsCharacter(fake);
+        }
+      } catch (err) {
+        setStatus('profile-status', 'Не удалось собрать модель');
+        return;
+      }
+      setStatus('profile-status', 'Сохранение...');
       try {
         const { r, data } = await api('PATCH', '/me', { avatar_data: dataUrl });
         if (!r.ok) { setStatus('profile-status', (data && data.detail) || 'Ошибка'); return; }
         user = data; localStorage.setItem('user', JSON.stringify(user));
         renderProfile();
-        setStatus('profile-status', 'Скин обновлён', true);
+        setStatus('profile-status', 'Скин на персонаже', true);
       } catch (e) { setStatus('profile-status', 'Нет связи'); }
     };
     img.src = reader.result;
