@@ -181,6 +181,19 @@ if engine is not None:
                 conn.exec_driver_sql(
                     "ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_data TEXT"
                 )
+                for col, typ in [
+                    ("last_seen", "TIMESTAMPTZ DEFAULT NOW()"),
+                    ("display_name", "VARCHAR(64)"),
+                    ("age", "VARCHAR(16)"),
+                    ("clan", "VARCHAR(64)"),
+                    ("family", "VARCHAR(64)"),
+                    ("specialization", "VARCHAR(64)"),
+                    ("skin_name", "VARCHAR(64)"),
+                ]:
+                    try:
+                        conn.exec_driver_sql(f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {col} {typ}")
+                    except Exception as _:
+                        pass
                 conn.exec_driver_sql(
                     "ALTER TABLE worlds ADD COLUMN IF NOT EXISTS last_heartbeat TIMESTAMPTZ DEFAULT NOW()"
                 )
@@ -249,12 +262,38 @@ def decode_token(token: str):
         return None
 
 
+def skin_bust_url(skin_name):
+    """NameMC-like bust render via mc-heads."""
+    if not skin_name:
+        return None
+    name = "".join(c for c in skin_name.strip() if c.isalnum() or c in "_-")[:32]
+    if not name:
+        return None
+    return f"https://mc-heads.net/player/{name}/150"
+
 def user_to_dict(u, extra=None):
+    skin = getattr(u, "skin_name", None) or None
+    created = u.created_at
+    days = 0
+    if created:
+        try:
+            if created.tzinfo is None:
+                created = created.replace(tzinfo=timezone.utc)
+            days = max(0, (datetime.now(timezone.utc) - created).days)
+        except Exception:
+            days = 0
     d = {
         "id": u.id,
         "username": u.username,
         "avatar": u.avatar or "snake_green",
-        "avatar_url": u.avatar_data if getattr(u, "avatar_data", None) else None,
+        "avatar_url": skin_bust_url(skin) or (u.avatar_data if getattr(u, "avatar_data", None) else None),
+        "skin_name": skin,
+        "display_name": getattr(u, "display_name", None) or u.username,
+        "age": getattr(u, "age", None) or "",
+        "clan": getattr(u, "clan", None) or "",
+        "family": getattr(u, "family", None) or "",
+        "specialization": getattr(u, "specialization", None) or "",
+        "days_in_app": days,
         "created_at": u.created_at.isoformat() if u.created_at else None,
         "is_admin": (u.username or "").lower() == "admin",
     }
@@ -454,11 +493,29 @@ def update_me(user, db):
                 user.avatar_data = None
             elif not isinstance(raw, str) or not raw.startswith("data:image/"):
                 return jsonify({"detail": "Нужна картинка data:image/..."}), 400
-            elif len(raw) > 400_000:  # ~300KB
+            elif len(raw) > 400_000:
                 return jsonify({"detail": "Фото слишком большое (макс ~300KB)"}), 400
             else:
                 user.avatar_data = raw
                 user.avatar = "photo"
+        # Profile card fields
+        if "display_name" in data:
+            user.display_name = (str(data["display_name"]) or "")[:64] or None
+        if "age" in data:
+            user.age = (str(data["age"]) or "")[:16] or None
+        if "clan" in data:
+            user.clan = (str(data["clan"]) or "")[:64] or None
+        if "family" in data:
+            user.family = (str(data["family"]) or "")[:64] or None
+        if "specialization" in data:
+            user.specialization = (str(data["specialization"]) or "")[:64] or None
+        if "skin_name" in data:
+            raw = (str(data["skin_name"]) or "").strip()[:64]
+            # only alnum _ -
+            clean = "".join(c for c in raw if c.isalnum() or c in "_-")
+            user.skin_name = clean or None
+            if clean:
+                user.avatar = "skin"
         db.commit()
         db.refresh(user)
         return jsonify(user_to_dict(user))
