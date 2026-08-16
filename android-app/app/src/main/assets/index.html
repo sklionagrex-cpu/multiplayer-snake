@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Snake Multiplayer</title>
+<script src="https://cdn.jsdelivr.net/npm/skinview3d@3.1.0/bundles/skinview3d.bundle.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
   :root {
@@ -127,25 +128,39 @@
   .status.ok { color: var(--line); }
 
   /* Profile card */
+  .skin-wrap { max-width: 220px; margin: 0 auto 12px; }
   .skin-frame {
-    width: 160px; height: 220px; margin: 8px auto 16px;
+    width: 100%; height: 240px; margin: 0 auto;
     border: 3px solid var(--line);
     box-shadow: 0 0 16px rgba(0,255,100,.2), inset 0 0 20px rgba(0,0,0,.5);
     background:
       repeating-conic-gradient(#0a1a10 0% 25%, #061208 0% 50%) 0 0 / 16px 16px;
     position: relative; overflow: hidden;
-    cursor: pointer;
+  }
+  .skin-frame canvas {
+    width: 100% !important; height: 100% !important;
+    display: block; touch-action: none;
   }
   .skin-frame img {
     width: 100%; height: 100%; object-fit: contain;
     image-rendering: pixelated;
-    image-rendering: crisp-edges;
   }
   .skin-frame .ph {
     position: absolute; inset: 0;
     display: flex; align-items: center; justify-content: center;
     color: var(--line-dim); font-size: 9px; text-align: center; padding: 8px;
+    z-index: 1;
   }
+  .skin-controls {
+    display: flex; gap: 8px; justify-content: center; margin-top: 8px;
+  }
+  .skin-controls button {
+    border: 2px solid var(--line-dim); background: var(--field-bg);
+    color: var(--line); font-family: inherit; font-size: 10px;
+    padding: 8px 14px; cursor: pointer;
+  }
+  .skin-controls button:active { background: #0a2e16; }
+
   .prof-row {
     display: flex; align-items: stretch; margin-bottom: 8px;
     border: 2px solid var(--line-dim); background: var(--field-bg);
@@ -344,11 +359,19 @@
       <h2>ПРОФИЛЬ</h2>
       <button class="icon-btn danger" onclick="doLogout()">⎋</button>
     </div>
-    <div class="skin-frame" id="skin-frame" onclick="pickSkinGallery()" title="Скин">
-      <div class="ph" id="skin-ph">ТАП —<br>СКИН ИЗ<br>ГАЛЕРЕИ</div>
-      <img id="skin-img" alt="" style="display:none">
+    <div class="skin-wrap">
+      <div class="skin-frame" id="skin-frame" title="Скин">
+        <div class="ph" id="skin-ph">СКИН ИЗ<br>ГАЛЕРЕИ</div>
+        <canvas id="skin-canvas" style="display:none"></canvas>
+        <img id="skin-img" alt="" style="display:none">
+      </div>
+      <div class="skin-controls">
+        <button type="button" onclick="rotateSkin(-1)">◀</button>
+        <button type="button" onclick="pickSkinGallery()">СКИН</button>
+        <button type="button" onclick="rotateSkin(1)">▶</button>
+      </div>
     </div>
-    <div class="prof-hint">Двойной тап по полю — изменить · Тап по рамке — скин из галереи</div>
+    <div class="prof-hint">3D-модель · крути ◀ ▶ · скин из галереи · двойной тап по полю — изменить</div>
 
     <div class="prof-row" data-field="display_name">
       <div class="ico">👤</div><div class="lab">ИМЯ:</div>
@@ -411,9 +434,16 @@
       <button class="icon-btn" onclick="historyBackProfile()">‹</button>
       <h2>ПРОФИЛЬ</h2>
     </div>
-    <div class="skin-frame" id="up-skin-frame">
-      <div class="ph" id="up-skin-ph">НЕТ<br>СКИНА</div>
-      <img id="up-skin-img" alt="" style="display:none">
+    <div class="skin-wrap">
+      <div class="skin-frame" id="up-skin-frame">
+        <div class="ph" id="up-skin-ph">НЕТ<br>СКИНА</div>
+        <canvas id="up-skin-canvas" style="display:none"></canvas>
+        <img id="up-skin-img" alt="" style="display:none">
+      </div>
+      <div class="skin-controls">
+        <button type="button" onclick="rotateUpSkin(-1)">◀</button>
+        <button type="button" onclick="rotateUpSkin(1)">▶</button>
+      </div>
     </div>
     <div class="prof-row"><div class="ico">👤</div><div class="lab">ИМЯ:</div><div class="val" id="up-name"></div></div>
     <div class="prof-row"><div class="ico">♛</div><div class="lab">ВОЗРАСТ:</div><div class="val" id="up-age"></div></div>
@@ -664,6 +694,92 @@ async function doRegister() {
   } catch (e) { setStatus('reg-status', 'Нет связи с сервером'); }
 }
 
+
+let skinViewer = null;
+let upSkinViewer = null;
+let skinYaw = Math.PI / 6; // NameMC-like default angle
+
+function destroySkinViewer() {
+  if (skinViewer) {
+    try { skinViewer.dispose(); } catch (e) {}
+    skinViewer = null;
+  }
+}
+
+function destroyUpSkinViewer() {
+  if (upSkinViewer) {
+    try { upSkinViewer.dispose(); } catch (e) {}
+    upSkinViewer = null;
+  }
+}
+
+function rotateSkin(dir) {
+  if (!skinViewer) return;
+  skinYaw += dir * 0.35;
+  skinViewer.playerObject.rotation.y = skinYaw;
+}
+
+function rotateUpSkin(dir) {
+  if (!upSkinViewer) return;
+  upSkinViewer.playerObject.rotation.y += dir * 0.35;
+}
+
+async function loadSkin3D(canvasId, phId, imgId, sourceUrl, isUp) {
+  const canvas = document.getElementById(canvasId);
+  const ph = document.getElementById(phId);
+  const img = document.getElementById(imgId);
+  if (!sourceUrl) {
+    if (isUp) destroyUpSkinViewer(); else destroySkinViewer();
+    if (canvas) canvas.style.display = 'none';
+    if (img) img.style.display = 'none';
+    if (ph) ph.style.display = 'flex';
+    return;
+  }
+  // Prefer skinview3d
+  if (window.skinview3d && canvas) {
+    try {
+      if (isUp) destroyUpSkinViewer(); else destroySkinViewer();
+      const viewer = new skinview3d.SkinViewer({
+        canvas: canvas,
+        width: canvas.clientWidth || 200,
+        height: canvas.clientHeight || 240,
+        skin: sourceUrl,
+      });
+      viewer.fov = 40;
+      viewer.zoom = 0.9;
+      // NameMC-like slight angle
+      viewer.playerObject.rotation.y = isUp ? Math.PI / 6 : skinYaw;
+      viewer.playerObject.rotation.x = -0.08;
+      // idle animation subtle
+      try {
+        viewer.animation = new skinview3d.IdleAnimation();
+        viewer.animation.speed = 0.6;
+      } catch (e) {}
+      // allow drag rotate
+      try {
+        const control = skinview3d.createOrbitControls(viewer);
+        control.enableZoom = false;
+        control.enablePan = false;
+      } catch (e) {}
+      canvas.style.display = 'block';
+      if (img) img.style.display = 'none';
+      if (ph) ph.style.display = 'none';
+      if (isUp) upSkinViewer = viewer; else skinViewer = viewer;
+      return;
+    } catch (e) {
+      console.warn('skinview3d failed', e);
+    }
+  }
+  // fallback 2D image
+  if (img) {
+    img.src = sourceUrl;
+    img.style.display = 'block';
+  }
+  if (canvas) canvas.style.display = 'none';
+  if (ph) ph.style.display = 'none';
+}
+
+
 function renderProfile() {
   if (!user) return;
   const ab = document.getElementById('btn-admin');
@@ -676,14 +792,8 @@ function renderProfile() {
   document.getElementById('pf-family').textContent = user.family || '—';
   document.getElementById('pf-specialization').textContent = user.specialization || '—';
 
-  const img = document.getElementById('skin-img');
-  const ph = document.getElementById('skin-ph');
   const url = user.avatar_url || skinUrl(user.skin_name);
-  if (url) {
-    img.src = url; img.style.display = 'block'; ph.style.display = 'none';
-  } else {
-    img.style.display = 'none'; ph.style.display = 'flex';
-  }
+  loadSkin3D('skin-canvas', 'skin-ph', 'skin-img', url, false);
 }
 
 let editField = null;
@@ -812,27 +922,26 @@ document.getElementById('skin-file').addEventListener('change', function(ev) {
   reader.onload = () => {
     const img = new Image();
     img.onload = async () => {
-      setStatus('profile-status', 'Рендер скина...');
+      setStatus('profile-status', 'Подготовка текстуры...');
       let dataUrl;
       try {
-        // If looks like MC skin texture (64x32 or 64x64), render on character
-        if ((img.width === 64 && (img.height === 64 || img.height === 32)) ||
-            (img.width === 128 && (img.height === 128 || img.height === 64))) {
-          dataUrl = renderSkinAsCharacter(img);
+        // Store normalized 64x64 skin TEXTURE (for 3D NameMC-style viewer)
+        const tex = document.createElement('canvas');
+        tex.width = 64; tex.height = 64;
+        const tctx = tex.getContext('2d');
+        tctx.imageSmoothingEnabled = false;
+        if (img.height === 32 && img.width === 64) {
+          tctx.drawImage(img, 0, 0, 64, 32, 0, 0, 64, 32);
+          tctx.drawImage(img, 0, 16, 16, 16, 16, 48, 16, 16);
+          tctx.drawImage(img, 40, 16, 16, 16, 32, 48, 16, 16);
+        } else if (img.width >= 64) {
+          tctx.drawImage(img, 0, 0, Math.min(img.width, 64), Math.min(img.height, 64), 0, 0, 64, 64);
         } else {
-          // Not a skin sheet — still try as texture if roughly square power of 2
-          // Scale down to 64 and attempt character render
-          const tmp = document.createElement('canvas');
-          tmp.width = 64; tmp.height = 64;
-          const c = tmp.getContext('2d');
-          c.imageSmoothingEnabled = false;
-          c.drawImage(img, 0, 0, 64, 64);
-          const fake = new Image();
-          await new Promise((res, rej) => { fake.onload = res; fake.onerror = rej; fake.src = tmp.toDataURL(); });
-          dataUrl = renderSkinAsCharacter(fake);
+          tctx.drawImage(img, 0, 0, 64, 64);
         }
+        dataUrl = tex.toDataURL('image/png');
       } catch (err) {
-        setStatus('profile-status', 'Не удалось собрать модель');
+        setStatus('profile-status', 'Не удалось прочитать скин');
         return;
       }
       setStatus('profile-status', 'Сохранение...');
@@ -840,8 +949,9 @@ document.getElementById('skin-file').addEventListener('change', function(ev) {
         const { r, data } = await api('PATCH', '/me', { avatar_data: dataUrl });
         if (!r.ok) { setStatus('profile-status', (data && data.detail) || 'Ошибка'); return; }
         user = data; localStorage.setItem('user', JSON.stringify(user));
+        skinYaw = Math.PI / 6;
         renderProfile();
-        setStatus('profile-status', 'Скин на персонаже', true);
+        setStatus('profile-status', '3D-скин готов', true);
       } catch (e) { setStatus('profile-status', 'Нет связи'); }
     };
     img.src = reader.result;
@@ -864,10 +974,7 @@ async function openUserProfile(uid, back) {
     document.getElementById('up-clan').textContent = (data.clan_info && data.clan_info.name) || data.clan || '—';
     document.getElementById('up-family').textContent = data.family || '—';
     document.getElementById('up-spec').textContent = data.specialization || '—';
-    const img = document.getElementById('up-skin-img');
-    const ph = document.getElementById('up-skin-ph');
-    if (data.avatar_url) { img.src = data.avatar_url; img.style.display = 'block'; ph.style.display = 'none'; }
-    else { img.style.display = 'none'; ph.style.display = 'flex'; }
+    loadSkin3D('up-skin-canvas', 'up-skin-ph', 'up-skin-img', data.avatar_url || null, true);
     const btn = document.getElementById('up-add-friend');
     if (data.is_self) btn.style.display = 'none';
     else { btn.style.display = 'block'; btn.onclick = async () => {
