@@ -616,11 +616,20 @@ def list_friends(user, db):
 @app.get("/subscribers")
 @token_required
 def list_subscribers(user, db):
-    """People who added me (I am in their friends list)."""
+    """People who added me, but I have not added them back yet.
+    After I add them as a friend they leave subscribers and stay only in friends.
+    """
     try:
+        # Already in my friends → not a "pending" subscriber
+        my_friend_ids = {
+            f.friend_id
+            for f in db.query(Friendship).filter(Friendship.user_id == user.id).all()
+        }
         links = db.query(Friendship).filter(Friendship.friend_id == user.id).all()
         result = []
         for link in links:
+            if link.user_id in my_friend_ids:
+                continue
             sub = db.query(User).filter(User.id == link.user_id).first()
             if sub:
                 result.append(user_to_dict(sub, {"is_subscriber": True}))
