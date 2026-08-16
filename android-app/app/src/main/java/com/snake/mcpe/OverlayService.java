@@ -710,13 +710,17 @@ public class OverlayService extends Service {
         Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
     }
 
-    /** Relay host derived from API URL (same machine, port 40000) */
+    /**
+     * Relay on Aeza VPS (UDP :40000). Prefer prefs, else API host if IP, else default.
+     */
     private String relayHost() {
-        String api = apiBase();
+        String forced = prefs().getString("relay_host", "");
+        if (forced != null && forced.length() > 0) return forced;
         try {
+            String api = apiBase();
             java.net.URI u = java.net.URI.create(api);
             String h = u.getHost();
-            if (h != null && h.length() > 0) return h;
+            if (h != null && h.matches("\\d+\\.\\d+\\.\\d+\\.\\d+")) return h;
         } catch (Exception ignored) {}
         return "109.120.152.78";
     }
@@ -734,22 +738,24 @@ public class OverlayService extends Service {
         stopSession();
         final String rid = (roomId != null && roomId.length() > 0)
             ? roomId : ("w" + System.currentTimeMillis());
+        final String rh = relayHost();
+        final int rp = relayPort();
         relayBridge = new RelayBridge(
-            relayHost(), relayPort(), rid, isHost, worldName, playerCount, maxPlayers);
+            rh, rp, rid, isHost, worldName, playerCount, maxPlayers);
         boolean ok = relayBridge.start();
         if (ok) {
             if (isHost) {
-                // Host: MC owns 19132; optional extra advertiser only if free (usually not)
-                toast("Хост + релей: «" + worldName + "»");
+                toast("Хост+релей «" + worldName + "» → " + rh + ":" + rp);
             } else {
-                toast("Релей+LAN: «" + worldName + "» → MC → Друзья");
+                toast("Релей+LAN «" + worldName + "» → MC → Друзья");
             }
             Log.i("SnakeOverlay", "session " + (isHost ? "HOST" : "GUEST")
-                + " room=" + rid + " relay=" + relayHost() + ":" + relayPort());
+                + " room=" + rid + " relay=" + rh + ":" + rp);
         } else {
-            toast(isHost
-                ? "Не удалось стартовать релей"
-                : "Порт 19132 занят. Закрой MC и нажми Играть снова");
+            String err = relayBridge.getLastError();
+            if (err == null) err = "unknown";
+            toast("Релей fail: " + err);
+            Log.e("SnakeOverlay", "relay start fail: " + err);
             relayBridge = null;
             // Fallback: discovery-only LAN (same Wi-Fi / ZeroTier)
             if (!isHost) {
@@ -758,6 +764,7 @@ public class OverlayService extends Service {
                     toast("Только LAN (без релея): «" + worldName + "»");
                 } else {
                     lanAdvertiser = null;
+                    toast("И LAN не встал — закрой Minecraft полностью");
                 }
             }
         }

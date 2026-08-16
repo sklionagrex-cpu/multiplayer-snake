@@ -50,6 +50,8 @@ public class RelayBridge {
     private Thread relayThread;
     private Thread localThread;
     private Thread keepThread;
+    /** Last start failure reason for UI toast */
+    private volatile String lastError = null;
 
     /** Guest: last Minecraft client address that talked to us */
     private volatile SocketAddress mcClientAddr;
@@ -78,37 +80,58 @@ public class RelayBridge {
         return key;
     }
 
+    public String getLastError() {
+        return lastError;
+    }
+
     public synchronized boolean start() {
         if (running.get()) return true;
+        lastError = null;
         try {
-            relaySock = new DatagramSocket();
-            relaySock.setSoTimeout(1000);
+            try {
+                relaySock = new DatagramSocket();
+                relaySock.setSoTimeout(1000);
+            } catch (Exception e) {
+                lastError = "UDP socket: " + e.getMessage();
+                throw e;
+            }
 
             if (isHost) {
                 // Host: do NOT bind 19132 — Minecraft owns it. We talk to 127.0.0.1:19132.
-                localSock = new DatagramSocket();
-                localSock.setSoTimeout(1000);
+                try {
+                    localSock = new DatagramSocket();
+                    localSock.setSoTimeout(1000);
+                } catch (Exception e) {
+                    lastError = "local UDP: " + e.getMessage();
+                    throw e;
+                }
             } else {
                 // Guest: we are the "server" Minecraft connects to.
-                localSock = new DatagramSocket(null);
-                localSock.setReuseAddress(true);
                 try {
-                    localSock.setOption(java.net.StandardSocketOptions.SO_REUSEPORT, true);
-                } catch (Exception ignored) {}
-                localSock.bind(new InetSocketAddress(LOCAL_MC_PORT));
-                localSock.setSoTimeout(1000);
-
-                // Fake LAN so world appears in Friends/LAN
-                advertiser = new LANAdvertiser(worldName, playerCount, maxPlayers, LOCAL_MC_PORT);
-                // Advertiser needs its own socket — conflict on 19132.
-                // Instead answer pings inside localLoop (same socket).
+                    localSock = new DatagramSocket(null);
+                    localSock.setReuseAddress(true);
+                    try {
+                        localSock.setOption(java.net.StandardSocketOptions.SO_REUSEPORT, true);
+                    } catch (Exception ignored) {}
+                    localSock.bind(new InetSocketAddress(LOCAL_MC_PORT));
+                    localSock.setSoTimeout(1000);
+                } catch (Exception e) {
+                    lastError = "порт 19132 занят (закрой MC): " + e.getMessage();
+                    throw e;
+                }
+                // Pings answered inside localLoop on same socket
                 advertiser = null;
             }
 
             running.set(true);
 
-            // Register with relay
-            sendControl(isHost ? TYPE_HOST : TYPE_GUEST);
+            // Register with relay (non-fatal — packets can still flow later)
+            try {
+                sendControl(isHost ? TYPE_HOST : TYPE_GUEST);
+            } catch (Exception e) {
+                Log.w(TAG, "relay register: " + e.getMessage());
+                // keep going — keepalive thread will retry
+            }
 
             relayThread = new Thread(this::relayLoop, "SnakeRelay-RX");
             relayThread.setDaemon(true);
@@ -127,7 +150,10 @@ public class RelayBridge {
                 + " room=" + new String(roomKey, StandardCharsets.UTF_8).trim());
             return true;
         } catch (Exception e) {
-            Log.e(TAG, "start failed: " + e.getMessage(), e);
+            if (lastError == null) {
+                lastError = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+            }
+            Log.e(TAG, "start failed: " + lastError, e);
             stop();
             return false;
         }
