@@ -530,7 +530,9 @@ public class OverlayService extends Service {
                             final int wId = worldId;
                             play.setOnClickListener(v -> {
                                 closeModal();
+                                // One tap: fake LAN + relay, then open MC — world shows in Friends like local Wi‑Fi
                                 startSession("w" + wId, false, wName, wPc, wMax);
+                                launchMinecraft();
                             });
                             row.addView(play);
                             list.addView(row);
@@ -745,28 +747,68 @@ public class OverlayService extends Service {
         boolean ok = relayBridge.start();
         if (ok) {
             if (isHost) {
-                toast("Хост+релей «" + worldName + "» → " + rh + ":" + rp);
+                // Friend sees your world in their MC Friends/LAN — no IP/ports
+                toast("Мир открыт для друзей: «" + worldName + "»");
             } else {
-                toast("Релей+LAN «" + worldName + "» → MC → Друзья");
+                toast("Мир «" + worldName + "» в Друзьях — зайди как в LAN");
             }
             Log.i("SnakeOverlay", "session " + (isHost ? "HOST" : "GUEST")
                 + " room=" + rid + " relay=" + rh + ":" + rp);
         } else {
             String err = relayBridge.getLastError();
             if (err == null) err = "unknown";
-            toast("Релей fail: " + err);
+            toast("Не вышло: " + err);
             Log.e("SnakeOverlay", "relay start fail: " + err);
             relayBridge = null;
-            // Fallback: discovery-only LAN (same Wi-Fi / ZeroTier)
+            // Same Wi‑Fi fallback: discovery only
             if (!isHost) {
                 lanAdvertiser = new LANAdvertiser(worldName, playerCount, maxPlayers);
                 if (lanAdvertiser.start()) {
-                    toast("Только LAN (без релея): «" + worldName + "»");
+                    toast("Локальный LAN: «" + worldName + "» (один Wi‑Fi)");
                 } else {
                     lanAdvertiser = null;
-                    toast("И LAN не встал — закрой Minecraft полностью");
+                    toast("Закрой Minecraft полностью и нажми Играть снова");
                 }
             }
+        }
+    }
+
+    /** Open Minecraft PE so the fake LAN world is visible in Friends */
+    private void launchMinecraft() {
+        final String[] pkgs = {
+            "com.mojang.minecraftpe",
+            "com.mojang.minecraftpe.unlock",
+            "com.mojang.minecraftpe.beta",
+            "com.mojang.minecraftworlds"
+        };
+        try {
+            android.content.pm.PackageManager pm = getPackageManager();
+            for (String pkg : pkgs) {
+                Intent launch = pm.getLaunchIntentForPackage(pkg);
+                if (launch != null) {
+                    launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(launch);
+                    return;
+                }
+            }
+            // fuzzy search
+            for (android.content.pm.ApplicationInfo app :
+                    pm.getInstalledApplications(android.content.pm.PackageManager.GET_META_DATA)) {
+                String pkg = app.packageName == null ? "" : app.packageName.toLowerCase();
+                String label = "";
+                try { label = pm.getApplicationLabel(app).toString().toLowerCase(); } catch (Exception ignored) {}
+                if (pkg.contains("minecraft") || label.contains("minecraft")) {
+                    Intent launch = pm.getLaunchIntentForPackage(app.packageName);
+                    if (launch != null) {
+                        launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivity(launch);
+                        return;
+                    }
+                }
+            }
+            toast("Minecraft PE не найден");
+        } catch (Exception e) {
+            toast("Не удалось открыть Minecraft");
         }
     }
 
