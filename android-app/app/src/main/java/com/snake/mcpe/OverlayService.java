@@ -16,6 +16,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.MotionEvent;
@@ -59,6 +60,8 @@ public class OverlayService extends Service {
     private Runnable friendPoll;
     private Runnable heartbeatRunnable;
     private final Set<Integer> knownHostWorldIds = new HashSet<>();
+    /** Fake LAN so worlds appear in MC Friends/LAN tab */
+    private LANAdvertiser lanAdvertiser;
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -416,6 +419,7 @@ public class OverlayService extends Service {
                 prefs().edit().putInt("hosting_world_id", worldId).apply();
                 startHeartbeatLoop(worldId);
                 handler.post(() -> {
+                    startFakeLan(name, 1, max);
                     toast("Хост запущен: " + name);
                     showHostPanel(screenW, worldId);
                 });
@@ -518,9 +522,12 @@ public class OverlayService extends Service {
                             row.addView(m);
 
                             Button play = actionBtn("Играть", true);
+                            final String wName = name;
+                            final int wPc = pc;
+                            final int wMax = max;
                             play.setOnClickListener(v -> {
                                 closeModal();
-                                toast("Открой MC → Друзья / LAN: " + name);
+                                startFakeLan(wName, wPc, wMax);
                             });
                             row.addView(play);
                             list.addView(row);
@@ -700,6 +707,29 @@ public class OverlayService extends Service {
         Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
     }
 
+    /** Start UDP 19132 Unconnected Pong so world shows in MC Friends/LAN */
+    private void startFakeLan(String worldName, int playerCount, int maxPlayers) {
+        stopFakeLan();
+        lanAdvertiser = new LANAdvertiser(worldName, playerCount, maxPlayers);
+        boolean ok = lanAdvertiser.start();
+        if (ok) {
+            toast("LAN: «" + worldName + "» — открой MC → Друзья");
+            Log.i("SnakeOverlay", "Fake LAN started: " + worldName);
+        } else {
+            toast("Порт 19132 занят. Закрой MC и нажми Играть снова");
+            lanAdvertiser = null;
+        }
+    }
+
+    private void stopFakeLan() {
+        if (lanAdvertiser != null) {
+            try {
+                lanAdvertiser.stop();
+            } catch (Exception ignored) {}
+            lanAdvertiser = null;
+        }
+    }
+
     private void startFriendHostPolling() {
         // Keep host alive while overlay is running (WebView timers may pause in background)
         handler.postDelayed(new Runnable() {
@@ -802,6 +832,7 @@ public class OverlayService extends Service {
 
     private void stopHostingOnServer() {
         stopHeartbeatLoop();
+        stopFakeLan();
         final int hostId = prefs().getInt("hosting_world_id", 0);
         if (hostId <= 0) return;
         prefs().edit().putInt("hosting_world_id", 0).apply();
@@ -816,6 +847,7 @@ public class OverlayService extends Service {
     public void onDestroy() {
         super.onDestroy();
         stopHeartbeatLoop();
+        stopFakeLan();
         stopHostingOnServer();
         if (friendPoll != null) handler.removeCallbacks(friendPoll);
         closeModal();
