@@ -169,6 +169,30 @@ class WorldPlayer(Base):
     __table_args__ = (UniqueConstraint("world_id", "user_id", name="uq_world_player"),)
 
 
+class Clan(Base):
+    __tablename__ = "clans"
+    id = Column(Integer, primary_key=True)
+    name = Column(String(48), unique=True, nullable=False, index=True)
+    description = Column(Text, default="")
+    specialization = Column(String(32), default="other")  # pvp, builders, redstone, survival, anarchy, other
+    leader_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    leader = relationship("User", foreign_keys=[leader_id])
+
+
+class ClanMember(Base):
+    __tablename__ = "clan_members"
+    id = Column(Integer, primary_key=True)
+    clan_id = Column(Integer, ForeignKey("clans.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    role = Column(String(16), default="member")  # leader, member
+    status = Column(String(16), default="pending")  # pending, active
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    __table_args__ = (UniqueConstraint("clan_id", "user_id", name="uq_clan_member"),)
+
+
+
+
 if engine is not None:
     try:
         Base.metadata.create_all(bind=engine)
@@ -286,7 +310,7 @@ def user_to_dict(u, extra=None):
         "id": u.id,
         "username": u.username,
         "avatar": u.avatar or "snake_green",
-        "avatar_url": skin_bust_url(skin) or (u.avatar_data if getattr(u, "avatar_data", None) else None),
+        "avatar_url": (u.avatar_data if getattr(u, "avatar_data", None) else None) or skin_bust_url(skin),
         "skin_name": skin,
         "display_name": getattr(u, "display_name", None) or u.username,
         "age": getattr(u, "age", None) or "",
@@ -1019,6 +1043,327 @@ def world_players(user, db, world_id):
         })
     finally:
         db.close()
+
+
+
+CLAN_SPECS = {
+    "pvp": {"emoji": "⚔️", "label": "PvP"},
+    "builders": {"emoji": "🧱", "label": "Строители"},
+    "redstone": {"emoji": "⚙️", "label": "Редстоун"},
+    "survival": {"emoji": "🏕️", "label": "Выживание"},
+    "anarchy": {"emoji": "🔥", "label": "Анархия"},
+    "farm": {"emoji": "🌾", "label": "Фермы"},
+    "other": {"emoji": "🐍", "label": "Другое"},
+}
+
+
+def days_in_app(u):
+    created = u.created_at
+    if not created:
+        return 0
+    try:
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
+        return max(0, (datetime.now(timezone.utc) - created).days)
+    except Exception:
+        return 0
+
+
+def clan_to_dict(c, db, extra=None):
+    members_active = (
+        db.query(ClanMember)
+        .filter(ClanMember.clan_id == c.id, ClanMember.status == "active")
+        .count()
+    )
+    spec = c.specialization or "other"
+    meta = CLAN_SPECS.get(spec, CLAN_SPECS["other"])
+    d = {
+        "id": c.id,
+        "name": c.name,
+        "description": c.description or "",
+        "specialization": spec,
+        "emoji": meta["emoji"],
+        "spec_label": meta["label"],
+        "leader_id": c.leader_id,
+        "leader_username": c.leader.username if c.leader else "?",
+        "member_count": members_active,
+        "created_at": c.created_at.isoformat() if c.created_at else None,
+    }
+    if extra:
+        d.update(extra)
+    return d
+
+
+@app.get("/users/<int:user_id>")
+@token_required
+def get_user_profile(user, db, user_id):
+    try:
+        u = db.query(User).filter(User.id == user_id).first()
+        if not u:
+            return jsonify({"detail": "Не найден"}), 404
+        # active clan
+        mem = (
+            db.query(ClanMember)
+            .filter(ClanMember.user_id == u.id, ClanMember.status == "active")
+            .first()
+        )
+        clan_info = None
+        if mem:
+            c = db.query(Clan).filter(Clan.id == mem.clan_id).first()
+            if c:
+                clan_info = clan_to_dict(c, db)
+        return jsonify(user_to_dict(u, {
+            "clan_info": clan_info,
+            "is_self": u.id == user.id,
+        }))
+    finally:
+        db.close()
+
+
+@app.get("/clans/specs")
+def clan_specs():
+    return jsonify(CLAN_SPECS)
+
+
+@app.get("/clans")
+@token_required
+def list_clans(user, db):
+    try:
+        clans = db.query(Clan).all()
+        result = [clan_to_dict(c, db) for c in clans]
+        result.sort(key=lambda x: (-x["member_count"], x["name"].lower()))
+        my = (
+            db.query(ClanMember)
+            .filter(ClanMember.user_id == user.id, ClanMember.status.in_(["active", "pending"]))
+            .first()
+        )
+        my_clan = None
+        my_pending = None
+        if my:
+            c = db.query(Clan).filter(Clan.id == my.clan_id).first()
+            if c and my.status == "active":
+                my_clan = clan_to_dict(c, db, {"my_role": my.role})
+            elif c and my.status == "pending":
+                my_pending = clan_to_dict(c, db)
+        return jsonify({
+            "clans": result,
+            "my_clan": my_clan,
+            "my_pending": my_pending,
+            "can_create": days_in_app(user) >= 15,
+            "days_in_app": days_in_app(user),
+        })
+    finally:
+        db.close()
+
+
+@app.post("/clans")
+@token_required
+def create_clan(user, db):
+    data = request.get_json(silent=True) or {}
+    name = (data.get("name") or "").strip()[:48]
+    description = (data.get("description") or "").strip()[:300]
+    specialization = (data.get("specialization") or "other").strip().lower()
+    if specialization not in CLAN_SPECS:
+        specialization = "other"
+    if len(name) < 2:
+        db.close()
+        return jsonify({"detail": "Название слишком короткое"}), 400
+    if days_in_app(user) < 15:
+        db.close()
+        return jsonify({"detail": "Создать клан можно после 15 дней в приложении"}), 403
+    try:
+        exists = db.query(ClanMember).filter(
+            ClanMember.user_id == user.id, ClanMember.status == "active"
+        ).first()
+        if exists:
+            return jsonify({"detail": "Ты уже в клане"}), 400
+        if db.query(Clan).filter(Clan.name.ilike(name)).first():
+            return jsonify({"detail": "Такое имя уже занято"}), 400
+        clan = Clan(
+            name=name, description=description,
+            specialization=specialization, leader_id=user.id,
+        )
+        db.add(clan)
+        db.flush()
+        db.add(ClanMember(clan_id=clan.id, user_id=user.id, role="leader", status="active"))
+        # sync profile clan field
+        user.clan = name
+        db.commit()
+        db.refresh(clan)
+        _ = clan.leader
+        return jsonify(clan_to_dict(clan, db, {"my_role": "leader"}))
+    finally:
+        db.close()
+
+
+@app.get("/clans/<int:clan_id>")
+@token_required
+def get_clan(user, db, clan_id):
+    try:
+        c = db.query(Clan).filter(Clan.id == clan_id).first()
+        if not c:
+            return jsonify({"detail": "Клан не найден"}), 404
+        members = (
+            db.query(ClanMember)
+            .filter(ClanMember.clan_id == clan_id, ClanMember.status == "active")
+            .all()
+        )
+        pending = []
+        me_role = None
+        mem_list = []
+        for m in members:
+            u = db.query(User).filter(User.id == m.user_id).first()
+            if not u:
+                continue
+            if m.user_id == user.id:
+                me_role = m.role
+            mem_list.append(user_to_dict(u, {"role": m.role}))
+        if me_role == "leader":
+            for m in db.query(ClanMember).filter(
+                ClanMember.clan_id == clan_id, ClanMember.status == "pending"
+            ).all():
+                u = db.query(User).filter(User.id == m.user_id).first()
+                if u:
+                    pending.append(user_to_dict(u, {"request_id": m.id}))
+        return jsonify({
+            "clan": clan_to_dict(c, db, {"my_role": me_role}),
+            "members": mem_list,
+            "pending": pending,
+        })
+    finally:
+        db.close()
+
+
+@app.post("/clans/<int:clan_id>/join")
+@token_required
+def request_join_clan(user, db, clan_id):
+    """Subscribe / request to join — leader must approve."""
+    try:
+        c = db.query(Clan).filter(Clan.id == clan_id).first()
+        if not c:
+            return jsonify({"detail": "Клан не найден"}), 404
+        active = db.query(ClanMember).filter(
+            ClanMember.user_id == user.id, ClanMember.status == "active"
+        ).first()
+        if active:
+            return jsonify({"detail": "Ты уже в клане"}), 400
+        existing = db.query(ClanMember).filter(
+            ClanMember.clan_id == clan_id, ClanMember.user_id == user.id
+        ).first()
+        if existing:
+            if existing.status == "pending":
+                return jsonify({"detail": "Заявка уже отправлена"}), 400
+            existing.status = "pending"
+            existing.role = "member"
+        else:
+            db.add(ClanMember(clan_id=clan_id, user_id=user.id, role="member", status="pending"))
+        db.commit()
+        return jsonify({"ok": True, "message": "Заявка отправлена главе"})
+    finally:
+        db.close()
+
+
+@app.post("/clans/<int:clan_id>/invite/<int:target_id>")
+@token_required
+def invite_to_clan(user, db, clan_id, target_id):
+    try:
+        c = db.query(Clan).filter(Clan.id == clan_id).first()
+        if not c or c.leader_id != user.id:
+            return jsonify({"detail": "Только глава может приглашать"}), 403
+        target = db.query(User).filter(User.id == target_id).first()
+        if not target:
+            return jsonify({"detail": "Игрок не найден"}), 404
+        if db.query(ClanMember).filter(
+            ClanMember.user_id == target_id, ClanMember.status == "active"
+        ).first():
+            return jsonify({"detail": "Игрок уже в клане"}), 400
+        existing = db.query(ClanMember).filter(
+            ClanMember.clan_id == clan_id, ClanMember.user_id == target_id
+        ).first()
+        if existing:
+            existing.status = "pending"
+        else:
+            db.add(ClanMember(clan_id=clan_id, user_id=target_id, role="member", status="pending"))
+        db.commit()
+        return jsonify({"ok": True})
+    finally:
+        db.close()
+
+
+@app.post("/clans/<int:clan_id>/approve/<int:target_id>")
+@token_required
+def approve_clan_member(user, db, clan_id, target_id):
+    try:
+        c = db.query(Clan).filter(Clan.id == clan_id).first()
+        if not c or c.leader_id != user.id:
+            return jsonify({"detail": "Только глава"}), 403
+        m = db.query(ClanMember).filter(
+            ClanMember.clan_id == clan_id, ClanMember.user_id == target_id, ClanMember.status == "pending"
+        ).first()
+        if not m:
+            return jsonify({"detail": "Заявки нет"}), 404
+        # leave other pending
+        db.query(ClanMember).filter(
+            ClanMember.user_id == target_id, ClanMember.id != m.id
+        ).delete(synchronize_session=False)
+        m.status = "active"
+        m.role = "member"
+        target = db.query(User).filter(User.id == target_id).first()
+        if target:
+            target.clan = c.name
+        db.commit()
+        return jsonify({"ok": True})
+    finally:
+        db.close()
+
+
+@app.post("/clans/<int:clan_id>/reject/<int:target_id>")
+@token_required
+def reject_clan_member(user, db, clan_id, target_id):
+    try:
+        c = db.query(Clan).filter(Clan.id == clan_id).first()
+        if not c or c.leader_id != user.id:
+            return jsonify({"detail": "Только глава"}), 403
+        db.query(ClanMember).filter(
+            ClanMember.clan_id == clan_id, ClanMember.user_id == target_id, ClanMember.status == "pending"
+        ).delete(synchronize_session=False)
+        db.commit()
+        return jsonify({"ok": True})
+    finally:
+        db.close()
+
+
+@app.delete("/clans/<int:clan_id>/leave")
+@token_required
+def leave_clan(user, db, clan_id):
+    try:
+        c = db.query(Clan).filter(Clan.id == clan_id).first()
+        if not c:
+            return jsonify({"detail": "Не найден"}), 404
+        m = db.query(ClanMember).filter(
+            ClanMember.clan_id == clan_id, ClanMember.user_id == user.id
+        ).first()
+        if not m:
+            return jsonify({"detail": "Ты не в этом клане"}), 400
+        if m.role == "leader" and m.status == "active":
+            # transfer or dissolve if no members
+            others = (
+                db.query(ClanMember)
+                .filter(ClanMember.clan_id == clan_id, ClanMember.user_id != user.id, ClanMember.status == "active")
+                .first()
+            )
+            if others:
+                return jsonify({"detail": "Сначала передай главу или исключи всех"}), 400
+            db.query(ClanMember).filter(ClanMember.clan_id == clan_id).delete(synchronize_session=False)
+            db.delete(c)
+        else:
+            db.delete(m)
+        user.clan = None
+        db.commit()
+        return jsonify({"ok": True})
+    finally:
+        db.close()
+
 
 
 @app.errorhandler(Exception)

@@ -343,11 +343,11 @@
       <h2>ПРОФИЛЬ</h2>
       <button class="icon-btn danger" onclick="doLogout()">⎋</button>
     </div>
-    <div class="skin-frame" id="skin-frame" onclick="promptSkin()" title="Скин">
-      <div class="ph" id="skin-ph">ДВАЖДЫ<br>ПО ПОЛЮ<br>СКИН</div>
+    <div class="skin-frame" id="skin-frame" onclick="pickSkinGallery()" title="Скин">
+      <div class="ph" id="skin-ph">ТАП —<br>СКИН ИЗ<br>ГАЛЕРЕИ</div>
       <img id="skin-img" alt="" style="display:none">
     </div>
-    <div class="prof-hint">Двойной тап по полю — изменить · Тап по рамке — скин (ник Minecraft)</div>
+    <div class="prof-hint">Двойной тап по полю — изменить · Тап по рамке — скин из галереи</div>
 
     <div class="prof-row" data-field="display_name">
       <div class="ico">👤</div><div class="lab">ИМЯ:</div>
@@ -382,6 +382,49 @@
 </div>
 
 <!-- FRIENDS -->
+
+<div class="screen" id="screen-clans">
+  <div class="frame">
+    <div class="topbar"><h2>КЛАНЫ</h2><button class="icon-btn" onclick="loadClans()">↻</button></div>
+    <div id="clan-mine"></div>
+    <div class="section-title"><span>ВСЕ КЛАНЫ</span></div>
+    <div id="clan-list"></div>
+    <button class="btn-pixel" id="btn-create-clan" style="display:none" onclick="openCreateClanModal()">СОЗДАТЬ КЛАН</button>
+    <div class="status" id="clans-status"></div>
+  </div>
+</div>
+
+<div class="screen" id="screen-clan-detail">
+  <div class="frame">
+    <div class="topbar">
+      <button class="icon-btn" onclick="show('clans')">‹</button>
+      <h2 id="clan-detail-title">КЛАН</h2>
+    </div>
+    <div id="clan-detail-body"></div>
+  </div>
+</div>
+
+<div class="screen" id="screen-user-profile">
+  <div class="frame">
+    <div class="topbar">
+      <button class="icon-btn" onclick="historyBackProfile()">‹</button>
+      <h2>ПРОФИЛЬ</h2>
+    </div>
+    <div class="skin-frame" id="up-skin-frame">
+      <div class="ph" id="up-skin-ph">НЕТ<br>СКИНА</div>
+      <img id="up-skin-img" alt="" style="display:none">
+    </div>
+    <div class="prof-row"><div class="ico">👤</div><div class="lab">ИМЯ:</div><div class="val" id="up-name"></div></div>
+    <div class="prof-row"><div class="ico">♛</div><div class="lab">ВОЗРАСТ:</div><div class="val" id="up-age"></div></div>
+    <div class="prof-row"><div class="ico">📅</div><div class="lab">ДНЕЙ:</div><div class="val" id="up-days"></div></div>
+    <div class="prof-row"><div class="ico">🛡</div><div class="lab">КЛАН:</div><div class="val" id="up-clan"></div></div>
+    <div class="prof-row"><div class="ico">👥</div><div class="lab">СЕМЬЯ:</div><div class="val" id="up-family"></div></div>
+    <div class="prof-row"><div class="ico">⚔</div><div class="lab">СПЕЦ.:</div><div class="val" id="up-spec"></div></div>
+    <button class="btn-pixel ghost" id="up-add-friend" style="display:none" onclick="addFriendFromProfile()">В ДРУЗЬЯ</button>
+    <div class="status" id="up-status"></div>
+  </div>
+</div>
+
 <div class="screen" id="screen-friends">
   <div class="frame">
     <div class="topbar">
@@ -442,9 +485,46 @@
 
 <div class="nav" id="main-nav" style="display:none">
   <button id="nav-worlds" onclick="show('worlds')"><span class="ni">🌐</span>Миры</button>
+  <button id="nav-clans" onclick="show('clans')"><span class="ni">🛡</span>Кланы</button>
   <button id="nav-friends" onclick="show('friends')"><span class="ni">👥</span>Друзья</button>
   <button id="nav-profile" onclick="show('profile')"><span class="ni">👤</span>Профиль</button>
 </div>
+
+
+<div class="modal-bg" id="modal-edit" onclick="if(event.target===this)closeModals()">
+  <div class="modal">
+    <h3 id="edit-title">ИЗМЕНИТЬ</h3>
+    <div class="field-row"><div class="field-ico">✎</div><input id="edit-input" placeholder=""></div>
+    <button class="btn-pixel" onclick="saveEditField()">СОХРАНИТЬ</button>
+    <button class="btn-pixel ghost" onclick="closeModals()">ОТМЕНА</button>
+    <div class="status" id="edit-status"></div>
+  </div>
+</div>
+<div class="modal-bg" id="modal-create-clan" onclick="if(event.target===this)closeModals()">
+  <div class="modal">
+    <h3>СОЗДАТЬ КЛАН</h3>
+    <div class="lbl">НАЗВАНИЕ</div>
+    <div class="field-row"><div class="field-ico">🛡</div><input id="clan-name" placeholder="Название"></div>
+    <div class="lbl">ОПИСАНИЕ</div>
+    <div class="field-row"><div class="field-ico">…</div><input id="clan-desc" placeholder="Описание"></div>
+    <div class="lbl">СПЕЦИАЛИЗАЦИЯ</div>
+    <div class="field-row"><div class="field-ico">⚔</div>
+      <select id="clan-spec" style="flex:1;background:transparent;border:none;color:var(--text);font-family:inherit;font-size:9px;padding:10px">
+        <option value="pvp">⚔️ PvP</option>
+        <option value="builders">🧱 Строители</option>
+        <option value="redstone">⚙️ Редстоун</option>
+        <option value="survival">🏕️ Выживание</option>
+        <option value="anarchy">🔥 Анархия</option>
+        <option value="farm">🌾 Фермы</option>
+        <option value="other">🐍 Другое</option>
+      </select>
+    </div>
+    <button class="btn-pixel" onclick="doCreateClan()">СОЗДАТЬ</button>
+    <button class="btn-pixel ghost" onclick="closeModals()">ОТМЕНА</button>
+    <div class="status" id="create-clan-status"></div>
+  </div>
+</div>
+<input type="file" id="skin-file" accept="image/*" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden">
 
 <div class="modal-bg" id="modal-servers" onclick="if(event.target===this)closeModals()">
   <div class="modal">
@@ -481,17 +561,19 @@ function show(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   const el = document.getElementById('screen-' + name);
   if (el) el.classList.add('active');
-  const authed = ['worlds','host','profile','friends','blocks','admin'].includes(name);
+  const authed = ['worlds','host','profile','friends','blocks','admin','clans','clan-detail','user-profile'].includes(name);
   document.getElementById('main-nav').style.display = authed ? 'flex' : 'none';
   document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
   if (name === 'friends') document.getElementById('nav-friends').classList.add('active');
-  else if (name === 'profile' || name === 'blocks' || name === 'admin') document.getElementById('nav-profile').classList.add('active');
+  else if (name === 'clans' || name === 'clan-detail') document.getElementById('nav-clans').classList.add('active');
+  else if (name === 'profile' || name === 'blocks' || name === 'admin' || name === 'user-profile') document.getElementById('nav-profile').classList.add('active');
   else if (authed) document.getElementById('nav-worlds').classList.add('active');
   if (name === 'worlds') loadWorlds();
   if (name === 'profile') renderProfile();
   if (name === 'friends') { loadFriends(); document.getElementById('friend-search').value=''; document.getElementById('friend-search-results').innerHTML=''; }
   if (name === 'blocks') loadBlocks();
   if (name === 'admin') loadAdminStats();
+  if (name === 'clans') loadClans();
 }
 
 function setStatus(id, text, ok) {
@@ -603,45 +685,249 @@ function renderProfile() {
   }
 }
 
-// Double-tap to edit profile fields
+let editField = null;
+let viewingUserId = null;
+let _profileBack = 'friends';
+
+// Double-tap → pixel modal
 (function setupDoubleTap() {
   let lastTap = 0, lastEl = null;
   document.querySelectorAll('.prof-row[data-field] .val').forEach(val => {
-    val.addEventListener('click', async (e) => {
+    val.addEventListener('click', (e) => {
       const now = Date.now();
       if (lastEl === val && now - lastTap < 350) {
         const field = val.parentElement.getAttribute('data-field');
-        const current = (user && user[field]) || (field === 'display_name' ? (user && user.username) : '') || '';
-        const next = prompt('Новое значение:', current);
-        if (next === null) return;
-        setStatus('profile-status', 'Сохранение...');
-        try {
-          const body = {}; body[field] = next;
-          const { r, data } = await api('PATCH', '/me', body);
-          if (!r.ok) { setStatus('profile-status', (data && data.detail) || 'Ошибка'); return; }
-          user = data; localStorage.setItem('user', JSON.stringify(user));
-          renderProfile();
-          setStatus('profile-status', 'Сохранено', true);
-        } catch (err) { setStatus('profile-status', 'Нет связи'); }
+        if (field === 'clan') {
+          setStatus('profile-status', 'Клан меняется только через вкладку Кланы');
+          return;
+        }
+        openEditModal(field);
       }
       lastTap = now; lastEl = val;
     });
   });
 })();
 
-async function promptSkin() {
-  const cur = (user && user.skin_name) || '';
-  const name = prompt('Ник Minecraft для скина (Java):', cur);
-  if (name === null) return;
-  setStatus('profile-status', 'Сохранение скина...');
+function openEditModal(field) {
+  editField = field;
+  const labels = {
+    display_name: 'ИМЯ', age: 'ВОЗРАСТ', family: 'СЕМЬЯ', specialization: 'СПЕЦИАЛИЗАЦИЯ'
+  };
+  document.getElementById('edit-title').textContent = labels[field] || 'ИЗМЕНИТЬ';
+  const current = (user && user[field]) || (field === 'display_name' ? (user && user.username) : '') || '';
+  document.getElementById('edit-input').value = current === '—' ? '' : current;
+  setStatus('edit-status', '');
+  document.getElementById('modal-edit').classList.add('show');
+  setTimeout(() => document.getElementById('edit-input').focus(), 100);
+}
+
+async function saveEditField() {
+  if (!editField) return;
+  const next = document.getElementById('edit-input').value.trim();
+  setStatus('edit-status', 'Сохранение...');
   try {
-    const { r, data } = await api('PATCH', '/me', { skin_name: name });
-    if (!r.ok) { setStatus('profile-status', (data && data.detail) || 'Ошибка'); return; }
+    const body = {}; body[editField] = next;
+    const { r, data } = await api('PATCH', '/me', body);
+    if (!r.ok) { setStatus('edit-status', (data && data.detail) || 'Ошибка'); return; }
     user = data; localStorage.setItem('user', JSON.stringify(user));
     renderProfile();
-    setStatus('profile-status', 'Скин обновлён', true);
-  } catch (e) { setStatus('profile-status', 'Нет связи'); }
+    closeModals();
+    setStatus('profile-status', 'Сохранено', true);
+  } catch (e) { setStatus('edit-status', 'Нет связи'); }
 }
+
+function pickSkinGallery() {
+  document.getElementById('skin-file').click();
+}
+
+document.getElementById('skin-file').addEventListener('change', function(ev) {
+  const file = ev.target.files && ev.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = async () => {
+      const max = 256;
+      let w = img.width, h = img.height;
+      if (w > h) { if (w > max) { h = h * max / w; w = max; } }
+      else { if (h > max) { w = w * max / h; h = max; } }
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(w); canvas.height = Math.round(h);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+      setStatus('profile-status', 'Сохранение скина...');
+      try {
+        const { r, data } = await api('PATCH', '/me', { avatar_data: dataUrl });
+        if (!r.ok) { setStatus('profile-status', (data && data.detail) || 'Ошибка'); return; }
+        user = data; localStorage.setItem('user', JSON.stringify(user));
+        renderProfile();
+        setStatus('profile-status', 'Скин обновлён', true);
+      } catch (e) { setStatus('profile-status', 'Нет связи'); }
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+  ev.target.value = '';
+});
+
+async function openUserProfile(uid, back) {
+  viewingUserId = uid;
+  _profileBack = back || 'friends';
+  show('user-profile');
+  document.getElementById('up-status').textContent = '';
+  try {
+    const { r, data } = await api('GET', '/users/' + uid);
+    if (!r.ok) { setStatus('up-status', (data && data.detail) || 'Ошибка'); return; }
+    document.getElementById('up-name').textContent = data.display_name || data.username || '—';
+    document.getElementById('up-age').textContent = data.age || '—';
+    document.getElementById('up-days').textContent = String(data.days_in_app != null ? data.days_in_app : '—');
+    document.getElementById('up-clan').textContent = (data.clan_info && data.clan_info.name) || data.clan || '—';
+    document.getElementById('up-family').textContent = data.family || '—';
+    document.getElementById('up-spec').textContent = data.specialization || '—';
+    const img = document.getElementById('up-skin-img');
+    const ph = document.getElementById('up-skin-ph');
+    if (data.avatar_url) { img.src = data.avatar_url; img.style.display = 'block'; ph.style.display = 'none'; }
+    else { img.style.display = 'none'; ph.style.display = 'flex'; }
+    const btn = document.getElementById('up-add-friend');
+    if (data.is_self) btn.style.display = 'none';
+    else { btn.style.display = 'block'; btn.onclick = async () => {
+      await api('POST', '/friends/' + uid); setStatus('up-status', 'Добавлен в друзья', true);
+    }; }
+  } catch (e) { setStatus('up-status', 'Нет связи'); }
+}
+
+function historyBackProfile() {
+  show(_profileBack || 'friends');
+}
+
+async function loadClans() {
+  const list = document.getElementById('clan-list');
+  const mine = document.getElementById('clan-mine');
+  list.innerHTML = '<div class="empty">Загрузка...</div>';
+  mine.innerHTML = '';
+  try {
+    const { r, data } = await api('GET', '/clans');
+    if (!r.ok) { list.innerHTML = '<div class="empty">Ошибка</div>'; return; }
+    const btn = document.getElementById('btn-create-clan');
+    if (btn) {
+      btn.style.display = (data.can_create && !data.my_clan) ? 'block' : 'none';
+      if (!data.can_create) {
+        setStatus('clans-status', 'Создать клан можно через ' + Math.max(0, 15 - (data.days_in_app||0)) + ' дн.');
+      } else setStatus('clans-status', '');
+    }
+    if (data.my_clan) {
+      mine.innerHTML = '<div class="card-px"><h3>' + data.my_clan.emoji + ' ' + escapeHtml(data.my_clan.name) +
+        '</h3><div class="desc">Твой клан · ' + escapeHtml(data.my_clan.spec_label) +
+        ' · ' + data.my_clan.member_count + ' чел.</div><div class="row"><button class="btn-sm">ОТКРЫТЬ</button></div></div>';
+      mine.querySelector('button').onclick = () => openClan(data.my_clan.id);
+    } else if (data.my_pending) {
+      mine.innerHTML = '<div class="card-px"><h3>Заявка: ' + escapeHtml(data.my_pending.name) +
+        '</h3><div class="desc">Ожидает одобрения главы</div></div>';
+    }
+    const clans = data.clans || [];
+    if (!clans.length) { list.innerHTML = '<div class="empty">Кланов пока нет</div>'; return; }
+    list.innerHTML = '';
+    clans.forEach(c => {
+      const el = document.createElement('div'); el.className = 'card-px';
+      el.innerHTML = '<h3>' + c.emoji + ' ' + escapeHtml(c.name) + '</h3><div class="desc">' +
+        escapeHtml(c.spec_label) + ' · ' + c.member_count + ' чел. · глава ' + escapeHtml(c.leader_username) +
+        '</div><div class="row"><button class="btn-sm">СМОТРЕТЬ</button></div>';
+      el.querySelector('button').onclick = () => openClan(c.id);
+      list.appendChild(el);
+    });
+  } catch (e) { list.innerHTML = '<div class="empty">Нет связи</div>'; }
+}
+
+function openCreateClanModal() {
+  setStatus('create-clan-status', '');
+  document.getElementById('modal-create-clan').classList.add('show');
+}
+
+async function doCreateClan() {
+  const name = document.getElementById('clan-name').value.trim();
+  const description = document.getElementById('clan-desc').value.trim();
+  const specialization = document.getElementById('clan-spec').value;
+  setStatus('create-clan-status', 'Создание...');
+  try {
+    const { r, data } = await api('POST', '/clans', { name, description, specialization });
+    if (!r.ok) { setStatus('create-clan-status', (data && data.detail) || 'Ошибка'); return; }
+    closeModals();
+    openClan(data.id);
+  } catch (e) { setStatus('create-clan-status', 'Нет связи'); }
+}
+
+async function openClan(id) {
+  show('clan-detail');
+  const body = document.getElementById('clan-detail-body');
+  body.innerHTML = '<div class="empty">Загрузка...</div>';
+  try {
+    const { r, data } = await api('GET', '/clans/' + id);
+    if (!r.ok) { body.innerHTML = '<div class="empty">Ошибка</div>'; return; }
+    const c = data.clan;
+    document.getElementById('clan-detail-title').textContent = c.emoji + ' ' + c.name;
+    let html = '<div class="card-px"><h3>' + escapeHtml(c.spec_label) + '</h3><div class="desc">' +
+      escapeHtml(c.description || 'Без описания') + '</div><div class="meta">' + c.member_count +
+      ' участников · глава ' + escapeHtml(c.leader_username) + '</div></div>';
+    html += '<div class="lbl">УЧАСТНИКИ</div>';
+    (data.members || []).forEach(m => {
+      html += '<div class="user-row" data-uid="' + m.id + '"><div class="avatar" id="cm-av-' + m.id +
+        '"></div><div class="user-info"><div class="name">' + escapeHtml(m.display_name || m.username) +
+        (m.role === 'leader' ? ' · глава' : '') + '</div></div></div>';
+    });
+    if (c.my_role === 'leader' && (data.pending || []).length) {
+      html += '<div class="lbl" style="margin-top:12px">ЗАЯВКИ</div>';
+      data.pending.forEach(m => {
+        html += '<div class="user-row"><div class="user-info"><div class="name">' +
+          escapeHtml(m.display_name || m.username) + '</div></div>' +
+          '<button class="btn-tiny friend" data-approve="' + m.id + '">✓</button>' +
+          '<button class="btn-tiny" data-reject="' + m.id + '">✕</button></div>';
+      });
+    }
+    html += '<div style="margin-top:12px">';
+    if (!c.my_role) {
+      html += '<button class="btn-pixel" id="btn-join-clan">ПОДАТЬ ЗАЯВКУ</button>';
+    } else if (c.my_role === 'member') {
+      html += '<button class="btn-pixel danger" id="btn-leave-clan">ВЫЙТИ ИЗ КЛАНА</button>';
+    } else if (c.my_role === 'leader') {
+      html += '<button class="btn-pixel danger" id="btn-leave-clan">РАСПУСТИТЬ (если один)</button>';
+    }
+    html += '</div>';
+    body.innerHTML = html;
+    (data.members || []).forEach(m => {
+      const av = document.getElementById('cm-av-' + m.id);
+      if (av) setAvatarEl(av, m);
+      const row = body.querySelector('[data-uid="' + m.id + '"]');
+      if (row) row.onclick = () => openUserProfile(m.id, 'clan-detail');
+    });
+    body.querySelectorAll('[data-approve]').forEach(b => {
+      b.onclick = async (e) => {
+        e.stopPropagation();
+        await api('POST', '/clans/' + id + '/approve/' + b.getAttribute('data-approve'));
+        openClan(id);
+      };
+    });
+    body.querySelectorAll('[data-reject]').forEach(b => {
+      b.onclick = async (e) => {
+        e.stopPropagation();
+        await api('POST', '/clans/' + id + '/reject/' + b.getAttribute('data-reject'));
+        openClan(id);
+      };
+    });
+    const join = document.getElementById('btn-join-clan');
+    if (join) join.onclick = async () => {
+      const { r, data: d } = await api('POST', '/clans/' + id + '/join');
+      alert((d && d.message) || (d && d.detail) || (r.ok ? 'Заявка отправлена' : 'Ошибка'));
+      openClan(id);
+    };
+    const leave = document.getElementById('btn-leave-clan');
+    if (leave) leave.onclick = async () => {
+      const { r, data: d } = await api('DELETE', '/clans/' + id + '/leave');
+      if (!r.ok) alert((d && d.detail) || 'Ошибка');
+      else show('clans');
+    };
+  } catch (e) { body.innerHTML = '<div class="empty">Нет связи</div>'; }
+}
+
 
 async function loadWorlds(force) {
   const list = document.getElementById('world-list');
@@ -775,6 +1061,8 @@ async function loadFriends() {
         info.innerHTML = '<div class="name">' + escapeHtml(f.display_name || f.username) +
           (f.hosting ? '<span class="badge">хост</span>' : '') +
           '</div><div class="sub">' + (f.hosting ? escapeHtml(f.hosting.name) : '') + '</div>';
+        info.style.cursor = 'pointer';
+        info.onclick = () => openUserProfile(f.id, 'friends');
         row.appendChild(info);
         const actions = document.createElement('div');
         if (f.hosting) {
@@ -830,6 +1118,8 @@ async function doSearchFriends() {
       const av = document.createElement('div'); av.className = 'avatar'; setAvatarEl(av, u); row.appendChild(av);
       const info = document.createElement('div'); info.className = 'user-info';
       info.innerHTML = '<div class="name">' + escapeHtml(u.display_name || u.username) + '</div>';
+      info.style.cursor = 'pointer';
+      info.onclick = () => openUserProfile(u.id, 'friends');
       row.appendChild(info);
       const btn = document.createElement('button'); btn.className = 'btn-tiny friend';
       if (u.is_friend) { btn.textContent = 'В друзьях'; btn.disabled = true; }
