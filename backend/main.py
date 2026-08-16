@@ -107,6 +107,13 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
     avatar = Column(String(32), default="snake_green")
     avatar_data = Column(Text, nullable=True)  # data:image/...;base64,... (small)
+    display_name = Column(String(64), nullable=True)
+    age = Column(String(16), nullable=True)
+    clan = Column(String(64), nullable=True)
+    family = Column(String(64), nullable=True)
+    specialization = Column(String(64), nullable=True)
+    skin_name = Column(String(64), nullable=True)
+    last_seen = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     worlds = relationship("World", back_populates="owner")
 

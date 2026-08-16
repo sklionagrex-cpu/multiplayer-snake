@@ -21,7 +21,10 @@ import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
+import android.text.InputType;
+import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -54,6 +57,7 @@ public class OverlayService extends Service {
     private static final String CHANNEL_FRIEND = "snake_friend_host";
     private static final String PREFS = "snake_prefs";
     private Runnable friendPoll;
+    private Runnable heartbeatRunnable;
     private final Set<Integer> knownHostWorldIds = new HashSet<>();
 
     @Override
@@ -186,23 +190,39 @@ public class OverlayService extends Service {
     }
 
     private void attachModal(LinearLayout content, int screenW) {
+        attachModalInternal(content, screenW, false);
+    }
+
+    /** Focusable modal so EditText can open keyboard. */
+    private void attachModalFocusable(LinearLayout content, int screenW) {
+        attachModalInternal(content, screenW, true);
+    }
+
+    private void attachModalInternal(LinearLayout content, int screenW, boolean focusable) {
         closeModal();
         modalRoot = new LinearLayout(this);
         modalRoot.setOrientation(LinearLayout.VERTICAL);
         modalRoot.setPadding(dp(12), dp(16), dp(12), dp(16));
         modalRoot.setBackground(cardBg());
 
-        // Right vertical drawer ~35% width, full height
-        int width = Math.max(dp(140), (int) (screenW * 0.35f));
+        int width = Math.max(dp(200), (int) (screenW * 0.42f));
         int height = getResources().getDisplayMetrics().heightPixels;
+        int flags = WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN;
+        if (!focusable) {
+            flags |= WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+        }
         WindowManager.LayoutParams lp = new WindowManager.LayoutParams(
             width,
             height,
             overlayType(),
-            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            flags,
             PixelFormat.TRANSLUCENT
         );
         lp.gravity = Gravity.TOP | Gravity.END;
+        if (focusable) {
+            lp.softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+                | WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE;
+        }
 
         ScrollView scroll = new ScrollView(this);
         scroll.addView(content);
@@ -258,7 +278,11 @@ public class OverlayService extends Service {
     }
 
 
-    /** Prefer live API: if I host → host panel, else servers list. */
+    /**
+     * Tap FAB:
+     * - already hosting → host panel (players + stop)
+     * - not hosting → "Начать хост?" → form → create world
+     */
     private void openCorrectPanel(final int screenW) {
         new Thread(() -> {
             int hostId = 0;
@@ -280,9 +304,155 @@ public class OverlayService extends Service {
             final int wid = hostId;
             handler.post(() -> {
                 if (wid > 0) showHostPanel(screenW, wid);
-                else showServersModal(screenW);
+                else showStartHostConfirm(screenW);
             });
         }).start();
+    }
+
+    private void showStartHostConfirm(int screenW) {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.addView(title("Начать хост?"));
+        box.addView(muted("Ты уже в своём мире Minecraft?\nНажми Да — укажи название и открой мир для других."));
+
+        Button yes = actionBtn("Да", true);
+        yes.setOnClickListener(v -> showHostForm(screenW));
+        box.addView(yes);
+
+        Button servers = actionBtn("Список серверов", false);
+        servers.setOnClickListener(v -> showServersModal(screenW));
+        box.addView(servers);
+
+        Button no = actionBtn("Нет", false);
+        no.setOnClickListener(v -> closeModal());
+        box.addView(no);
+
+        attachModal(box, screenW);
+    }
+
+    private void showHostForm(int screenW) {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.addView(title("Параметры хоста"));
+
+        final EditText nameEt = fieldInput("Название мира");
+        final EditText descEt = fieldInput("Описание (необязательно)");
+        final EditText maxEt = fieldInput("Макс. игроков (2–10)");
+        maxEt.setInputType(InputType.TYPE_CLASS_NUMBER);
+        maxEt.setText("5");
+
+        box.addView(muted("Название"));
+        box.addView(nameEt);
+        box.addView(muted("Описание"));
+        box.addView(descEt);
+        box.addView(muted("Игроков"));
+        box.addView(maxEt);
+
+        final TextView status = muted("");
+        box.addView(status);
+
+        Button start = actionBtn("Начать", true);
+        start.setOnClickListener(v -> {
+            String name = nameEt.getText().toString().trim();
+            String desc = descEt.getText().toString().trim();
+            int max = 5;
+            try {
+                max = Integer.parseInt(maxEt.getText().toString().trim());
+            } catch (Exception ignored) {}
+            if (max < 2) max = 2;
+            if (max > 10) max = 10;
+            if (name.isEmpty()) {
+                status.setText("Введи название");
+                return;
+            }
+            status.setText("Создаём...");
+            start.setEnabled(false);
+            createWorldAndHost(screenW, name, desc, max, status, start);
+        });
+        box.addView(start);
+
+        Button cancel = actionBtn("Отмена", false);
+        cancel.setOnClickListener(v -> closeModal());
+        box.addView(cancel);
+
+        attachModalFocusable(box, screenW);
+    }
+
+    private EditText fieldInput(String hint) {
+        EditText et = new EditText(this);
+        et.setHint(hint);
+        et.setTextColor(Color.WHITE);
+        et.setHintTextColor(Color.parseColor("#8aaa8a"));
+        et.setTextSize(14);
+        et.setSingleLine(true);
+        et.setImeOptions(EditorInfo.IME_ACTION_NEXT);
+        et.setBackgroundColor(Color.parseColor("#1a2b1a"));
+        et.setPadding(dp(10), dp(10), dp(10), dp(10));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        lp.bottomMargin = dp(8);
+        et.setLayoutParams(lp);
+        return et;
+    }
+
+    private void createWorldAndHost(int screenW, String name, String desc, int max,
+                                    TextView status, Button startBtn) {
+        new Thread(() -> {
+            try {
+                // Close previous host if any
+                int old = prefs().getInt("hosting_world_id", 0);
+                if (old > 0) {
+                    try { httpDelete("/worlds/" + old); } catch (Exception ignored) {}
+                }
+                String body = new JSONObject()
+                    .put("name", name)
+                    .put("description", desc)
+                    .put("max_players", max)
+                    .toString();
+                String json = httpPost("/worlds", body);
+                JSONObject w = new JSONObject(json);
+                final int worldId = w.optInt("id", 0);
+                if (worldId <= 0) throw new RuntimeException("no id");
+                prefs().edit().putInt("hosting_world_id", worldId).apply();
+                startHeartbeatLoop(worldId);
+                handler.post(() -> {
+                    toast("Хост запущен: " + name);
+                    showHostPanel(screenW, worldId);
+                });
+            } catch (Exception e) {
+                handler.post(() -> {
+                    status.setText("Ошибка: " + (e.getMessage() != null ? e.getMessage() : "нет связи"));
+                    startBtn.setEnabled(true);
+                });
+            }
+        }).start();
+    }
+
+    private void startHeartbeatLoop(final int worldId) {
+        stopHeartbeatLoop();
+        heartbeatRunnable = new Runnable() {
+            @Override
+            public void run() {
+                new Thread(() -> {
+                    try {
+                        httpPost("/worlds/" + worldId + "/heartbeat",
+                            "{\"player_count\":1}");
+                        // also presence
+                        httpPost("/worlds/" + worldId + "/presence",
+                            "{\"action\":\"heartbeat\",\"rtt_ms\":0}");
+                    } catch (Exception ignored) {}
+                }).start();
+                handler.postDelayed(this, 20000);
+            }
+        };
+        handler.post(heartbeatRunnable);
+    }
+
+    private void stopHeartbeatLoop() {
+        if (heartbeatRunnable != null) {
+            handler.removeCallbacks(heartbeatRunnable);
+            heartbeatRunnable = null;
+        }
     }
 
     private void showServersModal(int screenW) {
@@ -374,13 +544,27 @@ public class OverlayService extends Service {
         list.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(list);
         box.addView(scroll, new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, dp(200)));
+            LinearLayout.LayoutParams.MATCH_PARENT, dp(180)));
+
+        Button stop = actionBtn("Остановить хост", true);
+        stop.setBackgroundColor(Color.parseColor("#7f1d1d"));
+        stop.setTextColor(Color.WHITE);
+        stop.setOnClickListener(v -> {
+            stopHostingOnServer();
+            closeModal();
+            toast("Хост остановлен");
+        });
+        box.addView(stop);
 
         Button close = actionBtn("Закрыть", false);
         close.setOnClickListener(v -> closeModal());
         box.addView(close);
 
         attachModal(box, screenW);
+        // ensure heartbeat is running
+        if (prefs().getInt("hosting_world_id", 0) == worldId) {
+            startHeartbeatLoop(worldId);
+        }
 
         long t0 = System.currentTimeMillis();
         new Thread(() -> {
@@ -594,7 +778,7 @@ public class OverlayService extends Service {
             this, 1, stop, PendingIntent.FLAG_IMMUTABLE);
         return new NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Multiplayer Snake")
-            .setContentText("Тап — серверы · вниз — скрыть")
+            .setContentText("Тап — хост / серверы · вниз — скрыть")
             .setSmallIcon(android.R.drawable.ic_menu_compass)
             .addAction(0, "Скрыть", stopPi)
             .setOngoing(true)
@@ -617,19 +801,21 @@ public class OverlayService extends Service {
     }
 
     private void stopHostingOnServer() {
+        stopHeartbeatLoop();
         final int hostId = prefs().getInt("hosting_world_id", 0);
         if (hostId <= 0) return;
+        prefs().edit().putInt("hosting_world_id", 0).apply();
         new Thread(() -> {
             try {
                 httpDelete("/worlds/" + hostId);
             } catch (Exception ignored) {}
-            prefs().edit().putInt("hosting_world_id", 0).apply();
         }).start();
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
+        stopHeartbeatLoop();
         stopHostingOnServer();
         if (friendPoll != null) handler.removeCallbacks(friendPoll);
         closeModal();

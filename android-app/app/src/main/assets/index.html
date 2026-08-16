@@ -244,6 +244,32 @@
   .nav button.active { color: var(--line); }
   .nav button .ni { font-size: 14px; }
 
+  /* Big + button — bottom center, above nav */
+  .fab-plus {
+    display: none;
+    position: fixed;
+    left: 50%;
+    bottom: calc(58px + env(safe-area-inset-bottom, 0px));
+    transform: translateX(-50%);
+    width: 58px; height: 58px;
+    border-radius: 50%;
+    border: 3px solid var(--line);
+    background: linear-gradient(160deg, #0a3d1a 0%, #041008 100%);
+    color: var(--line);
+    font-size: 32px;
+    font-weight: bold;
+    line-height: 1;
+    z-index: 60;
+    box-shadow: 0 0 20px rgba(0,255,100,.35), 0 4px 12px rgba(0,0,0,.5);
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    font-family: inherit;
+  }
+  .fab-plus.visible { display: flex; }
+  .fab-plus:active { transform: translateX(-50%) scale(0.92); }
+
   .modal-bg {
     display: none; position: fixed; inset: 0; background: rgba(0,0,0,.8);
     z-index: 100; align-items: flex-end; justify-content: center;
@@ -329,26 +355,8 @@
       <button class="icon-btn" onclick="loadWorlds(true)">↻</button>
     </div>
     <div class="lbl" id="worlds-sub">Загрузка...</div>
+    <div id="my-host-box"></div>
     <div id="world-list"></div>
-    <button class="btn-pixel" onclick="show('host')">ОТКРЫТЬ СВОЙ МИР</button>
-  </div>
-</div>
-
-<!-- HOST -->
-<div class="screen" id="screen-host">
-  <div class="frame">
-    <div class="topbar">
-      <button class="icon-btn" onclick="show('worlds')">‹</button>
-      <h2>ОТКРЫТЬ МИР</h2>
-    </div>
-    <div class="lbl">НАЗВАНИЕ</div>
-    <div class="field-row"><div class="field-ico">◆</div><input id="host-name" placeholder="Название мира"></div>
-    <div class="lbl">ОПИСАНИЕ</div>
-    <div class="field-row"><div class="field-ico">…</div><input id="host-desc" placeholder="Описание"></div>
-    <div class="lbl">МАКС. ИГРОКОВ</div>
-    <div class="field-row"><div class="field-ico">#</div><input id="host-max" type="number" value="5" min="2" max="10"></div>
-    <button class="btn-pixel" id="btn-host" onclick="doHost()">СОЗДАТЬ И ОТКРЫТЬ MC</button>
-    <div class="status" id="host-status"></div>
   </div>
 </div>
 
@@ -514,6 +522,8 @@
   </div>
 </div>
 
+<button class="fab-plus" id="fab-plus" onclick="startHostFromLauncher()" title="Открыть Minecraft и начать хост">+</button>
+
 <div class="nav" id="main-nav" style="display:none">
   <button id="nav-worlds" onclick="show('worlds')"><span class="ni">🌐</span>Миры</button>
   <button id="nav-clans" onclick="show('clans')"><span class="ni">🛡</span>Кланы</button>
@@ -592,8 +602,10 @@ function show(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   const el = document.getElementById('screen-' + name);
   if (el) el.classList.add('active');
-  const authed = ['worlds','host','profile','friends','blocks','admin','clans','clan-detail','user-profile'].includes(name);
+  const authed = ['worlds','profile','friends','blocks','admin','clans','clan-detail','user-profile'].includes(name);
   document.getElementById('main-nav').style.display = authed ? 'flex' : 'none';
+  const fab = document.getElementById('fab-plus');
+  if (fab) fab.classList.toggle('visible', name === 'worlds' && !!token);
   document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
   if (name === 'friends') document.getElementById('nav-friends').classList.add('active');
   else if (name === 'clans' || name === 'clan-detail') document.getElementById('nav-clans').classList.add('active');
@@ -1134,10 +1146,30 @@ async function loadWorlds(force) {
 
 function renderWorldList(worlds, list, sub) {
   list.innerHTML = '';
+  const myBox = document.getElementById('my-host-box');
+  if (myBox) myBox.innerHTML = '';
+  const mine = (user && worlds) ? worlds.filter(w => w.owner_id === user.id) : [];
+  const others = (worlds || []).filter(w => !user || w.owner_id !== user.id);
   sub.textContent = worlds.length ? ('Открытых: ' + worlds.length) : 'Нет открытых миров';
-  if (!worlds.length) { list.innerHTML = '<div class="empty">Пока тихо — открой свой мир</div>'; return; }
+  if (mine.length && myBox) {
+    mine.forEach(w => {
+      const el = document.createElement('div');
+      el.className = 'card-px';
+      el.style.borderColor = 'var(--line)';
+      el.innerHTML = '<h3>🐍 ТЫ ХОСТИШЬ: ' + escapeHtml(w.name) + '</h3><div class="desc">' +
+        escapeHtml(w.description||'') + '</div><div class="meta"><span class="host-dot"></span>' +
+        (w.player_count||0) + '/' + (w.max_players||5) +
+        '</div><div class="row"><button class="btn-sm" style="border-color:var(--danger);color:var(--danger)">ОСТАНОВИТЬ</button></div>';
+      el.querySelector('button').onclick = () => stopMyHost(w.id);
+      myBox.appendChild(el);
+    });
+  }
+  if (!others.length && !mine.length) {
+    list.innerHTML = '<div class="empty">Пока тихо — нажми + и открой мир в Minecraft</div>';
+    return;
+  }
   const frag = document.createDocumentFragment();
-  worlds.forEach(w => {
+  others.forEach(w => {
     const el = document.createElement('div');
     el.className = 'card-px';
     el.innerHTML = '<h3>' + escapeHtml(w.name) + '</h3><div class="desc">' + escapeHtml(w.description||'') +
@@ -1156,31 +1188,25 @@ async function joinWorld(w) {
     if (!r.ok) { alert((data && data.detail) || 'Нельзя'); return; }
   } catch (e) { alert('Нет связи'); return; }
   startPresence(w.id, false);
+  try { if (window.AndroidBridge && AndroidBridge.startOverlay) AndroidBridge.startOverlay(); } catch(e) {}
   launchMinecraft();
 }
 
-async function doHost() {
-  if (hostBusy) return;
-  const name = document.getElementById('host-name').value.trim();
-  const description = document.getElementById('host-desc').value.trim();
-  let max_players = parseInt(document.getElementById('host-max').value || '5', 10);
-  if (!name) { setStatus('host-status', 'Введи название'); return; }
-  if (isNaN(max_players)) max_players = 5;
-  hostBusy = true;
-  const btn = document.getElementById('btn-host');
-  if (btn) btn.disabled = true;
-  setStatus('host-status', 'Открываем...');
+/** + button: open Minecraft + overlay. Host is started from overlay inside MC. */
+function startHostFromLauncher() {
+  try { if (window.AndroidBridge && AndroidBridge.startOverlay) AndroidBridge.startOverlay(); } catch(e) {}
+  launchMinecraft();
+}
+
+async function stopMyHost(worldId) {
   try {
-    if (myWorldId) { try { await api('DELETE', '/worlds/' + myWorldId); } catch(e) {} myWorldId = null; }
-    const { r, data } = await api('POST', '/worlds', { name, description, max_players });
-    if (!r.ok) { setStatus('host-status', (data && data.detail) || 'Ошибка'); return; }
-    myWorldId = data.id;
-    try { if (window.AndroidBridge && AndroidBridge.saveHostingWorld) AndroidBridge.saveHostingWorld(String(data.id)); } catch(e) {}
-    setStatus('host-status', 'Готово', true);
-    startHeartbeat(); startPresence(data.id, true);
-    setTimeout(launchMinecraft, 250);
-  } catch (e) { setStatus('host-status', 'Нет связи'); }
-  finally { hostBusy = false; if (btn) btn.disabled = false; }
+    await api('DELETE', '/worlds/' + worldId);
+  } catch (e) {}
+  myWorldId = null;
+  stopHeartbeat();
+  stopPresence();
+  try { if (window.AndroidBridge && AndroidBridge.clearHostingWorld) AndroidBridge.clearHostingWorld(); } catch(e) {}
+  loadWorlds(true);
 }
 
 function startHeartbeat() {
