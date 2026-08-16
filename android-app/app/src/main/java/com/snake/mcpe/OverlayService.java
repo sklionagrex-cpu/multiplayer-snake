@@ -62,6 +62,8 @@ public class OverlayService extends Service {
     private final Set<Integer> knownHostWorldIds = new HashSet<>();
     /** Fake LAN so worlds appear in MC Friends/LAN tab */
     private LANAdvertiser lanAdvertiser;
+    /** UDP bridge through internet relay (host + guest) */
+    private RelayBridge relayBridge;
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -418,9 +420,9 @@ public class OverlayService extends Service {
                 if (worldId <= 0) throw new RuntimeException("no id");
                 prefs().edit().putInt("hosting_world_id", worldId).apply();
                 startHeartbeatLoop(worldId);
+                final String room = "w" + worldId;
                 handler.post(() -> {
-                    startFakeLan(name, 1, max);
-                    toast("Хост запущен: " + name);
+                    startSession(room, true, name, 1, max);
                     showHostPanel(screenW, worldId);
                 });
             } catch (Exception e) {
@@ -525,9 +527,10 @@ public class OverlayService extends Service {
                             final String wName = name;
                             final int wPc = pc;
                             final int wMax = max;
+                            final int wId = worldId;
                             play.setOnClickListener(v -> {
                                 closeModal();
-                                startFakeLan(wName, wPc, wMax);
+                                startSession("w" + wId, false, wName, wPc, wMax);
                             });
                             row.addView(play);
                             list.addView(row);
@@ -707,27 +710,77 @@ public class OverlayService extends Service {
         Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
     }
 
-    /** Start UDP 19132 Unconnected Pong so world shows in MC Friends/LAN */
-    private void startFakeLan(String worldName, int playerCount, int maxPlayers) {
-        stopFakeLan();
-        lanAdvertiser = new LANAdvertiser(worldName, playerCount, maxPlayers);
-        boolean ok = lanAdvertiser.start();
+    /** Relay host derived from API URL (same machine, port 40000) */
+    private String relayHost() {
+        String api = apiBase();
+        try {
+            java.net.URI u = java.net.URI.create(api);
+            String h = u.getHost();
+            if (h != null && h.length() > 0) return h;
+        } catch (Exception ignored) {}
+        return "109.120.152.78";
+    }
+
+    private int relayPort() {
+        return prefs().getInt("relay_port", 40000);
+    }
+
+    /**
+     * Guest join: local 19132 proxy (fake LAN + forward via relay).
+     * Host: bridge local MC server ↔ relay (MC already on 19132).
+     */
+    private void startSession(String roomId, boolean isHost, String worldName,
+                              int playerCount, int maxPlayers) {
+        stopSession();
+        final String rid = (roomId != null && roomId.length() > 0)
+            ? roomId : ("w" + System.currentTimeMillis());
+        relayBridge = new RelayBridge(
+            relayHost(), relayPort(), rid, isHost, worldName, playerCount, maxPlayers);
+        boolean ok = relayBridge.start();
         if (ok) {
-            toast("LAN: «" + worldName + "» — открой MC → Друзья");
-            Log.i("SnakeOverlay", "Fake LAN started: " + worldName);
+            if (isHost) {
+                // Host: MC owns 19132; optional extra advertiser only if free (usually not)
+                toast("Хост + релей: «" + worldName + "»");
+            } else {
+                toast("Релей+LAN: «" + worldName + "» → MC → Друзья");
+            }
+            Log.i("SnakeOverlay", "session " + (isHost ? "HOST" : "GUEST")
+                + " room=" + rid + " relay=" + relayHost() + ":" + relayPort());
         } else {
-            toast("Порт 19132 занят. Закрой MC и нажми Играть снова");
+            toast(isHost
+                ? "Не удалось стартовать релей"
+                : "Порт 19132 занят. Закрой MC и нажми Играть снова");
+            relayBridge = null;
+            // Fallback: discovery-only LAN (same Wi-Fi / ZeroTier)
+            if (!isHost) {
+                lanAdvertiser = new LANAdvertiser(worldName, playerCount, maxPlayers);
+                if (lanAdvertiser.start()) {
+                    toast("Только LAN (без релея): «" + worldName + "»");
+                } else {
+                    lanAdvertiser = null;
+                }
+            }
+        }
+    }
+
+    private void stopSession() {
+        if (relayBridge != null) {
+            try { relayBridge.stop(); } catch (Exception ignored) {}
+            relayBridge = null;
+        }
+        if (lanAdvertiser != null) {
+            try { lanAdvertiser.stop(); } catch (Exception ignored) {}
             lanAdvertiser = null;
         }
     }
 
+    /** @deprecated use startSession */
+    private void startFakeLan(String worldName, int playerCount, int maxPlayers) {
+        startSession(worldName, false, worldName, playerCount, maxPlayers);
+    }
+
     private void stopFakeLan() {
-        if (lanAdvertiser != null) {
-            try {
-                lanAdvertiser.stop();
-            } catch (Exception ignored) {}
-            lanAdvertiser = null;
-        }
+        stopSession();
     }
 
     private void startFriendHostPolling() {
