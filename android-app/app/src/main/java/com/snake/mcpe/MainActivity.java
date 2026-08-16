@@ -226,7 +226,7 @@ public class MainActivity extends AppCompatActivity {
         final SharedPreferences prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         final int hostId = prefs.getInt("hosting_world_id", 0);
         final String token = prefs.getString("token", "");
-        final String api = prefs.getString("api_url", "https://snake-master-3pzr.onrender.com");
+        final String api = prefs.getString("api_url", "http://109.120.152.78:8000");
         if (hostId > 0 && token != null && token.length() > 0) {
             new Thread(() -> {
                 try {

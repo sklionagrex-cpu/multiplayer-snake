@@ -80,7 +80,7 @@ public class OverlayService extends Service {
     }
 
     private String apiBase() {
-        return prefs().getString("api_url", "https://snake-master-3pzr.onrender.com");
+        return prefs().getString("api_url", "http://109.120.152.78:8000");
     }
 
     private String token() {
