@@ -584,7 +584,13 @@
 </div>
 
 <script>
-const API = localStorage.getItem('api_url') || 'https://likewise-salad-tackle-excellence.trycloudflare.com';
+/** API base — auto-loaded from GitHub api_url.txt so tunnel URL can change without new APK */
+let API = localStorage.getItem('api_url') || 'https://likewise-salad-tackle-excellence.trycloudflare.com';
+const API_CONFIG_URL = 'https://raw.githubusercontent.com/sklionagrex-cpu/multiplayer-snake/main/api_url.txt';
+const API_FALLBACKS = [
+  'https://likewise-salad-tackle-excellence.trycloudflare.com',
+  'http://109.120.152.78:8000'
+];
 let token = localStorage.getItem('token') || '';
 let user = null;
 try { user = JSON.parse(localStorage.getItem('user') || 'null'); } catch(e) {}
@@ -592,6 +598,57 @@ let myWorldId = null, joinedWorldId = null;
 let heartbeatTimer = null, presenceTimer = null, searchTimer = null;
 let lastLanRtt = 0, hostBusy = false;
 let _worldsCache = null, _worldsCacheAt = 0;
+
+async function probeApi(base) {
+  if (!base) return false;
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 6000);
+    const r = await fetch(base.replace(/\/$/, '') + '/health', { cache: 'no-store', signal: ctrl.signal });
+    clearTimeout(t);
+    return r.ok;
+  } catch (e) { return false; }
+}
+
+async function resolveApi() {
+  const candidates = [];
+  // 1) Live config from GitHub (edit api_url.txt — no APK rebuild)
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 8000);
+    const r = await fetch(API_CONFIG_URL + '?t=' + Date.now(), { cache: 'no-store', signal: ctrl.signal });
+    clearTimeout(t);
+    if (r.ok) {
+      const text = (await r.text()).trim().split(/\s+/)[0];
+      if (text.indexOf('http') === 0) candidates.push(text.replace(/\/$/, ''));
+    }
+  } catch (e) {}
+  // 2) Remembered
+  const saved = localStorage.getItem('api_url');
+  if (saved) candidates.push(saved.replace(/\/$/, ''));
+  // 3) Built-in fallbacks
+  API_FALLBACKS.forEach(u => candidates.push(u.replace(/\/$/, '')));
+  // unique
+  const seen = {};
+  for (let i = 0; i < candidates.length; i++) {
+    const u = candidates[i];
+    if (!u || seen[u]) continue;
+    seen[u] = 1;
+    if (await probeApi(u)) {
+      API = u;
+      localStorage.setItem('api_url', API);
+      try {
+        if (window.AndroidBridge && AndroidBridge.saveSession)
+          AndroidBridge.saveSession(token || '', API);
+      } catch (e) {}
+      console.log('API ok', API);
+      return API;
+    }
+  }
+  // last resort: keep current
+  console.warn('API probe failed, using', API);
+  return API;
+}
 
 function togglePass(id, btn) {
   const el = document.getElementById(id);
@@ -1449,10 +1506,17 @@ async function openPlayerPanel(worldId) {
   } catch (e) { box.innerHTML = '<div class="empty">Нет связи</div>'; }
 }
 
-if (token && user) {
-  try { if (window.AndroidBridge && AndroidBridge.saveSession) AndroidBridge.saveSession(token, API); } catch(e) {}
-  show('worlds');
-} else show('login');
+(async function boot() {
+  try {
+    setStatus('login-status', 'Подключение...');
+  } catch (e) {}
+  await resolveApi();
+  try { setStatus('login-status', ''); } catch (e) {}
+  if (token && user) {
+    try { if (window.AndroidBridge && AndroidBridge.saveSession) AndroidBridge.saveSession(token, API); } catch(e) {}
+    show('worlds');
+  } else show('login');
+})();
 </script>
 </body>
 </html>
