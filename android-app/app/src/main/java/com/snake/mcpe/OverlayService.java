@@ -85,7 +85,7 @@ public class OverlayService extends Service {
     }
 
     private String apiBase() {
-        return prefs().getString("api_url", "http://109.120.152.78:8000");
+        return prefs().getString("api_url", "https://likewise-salad-tackle-excellence.trycloudflare.com");
     }
 
     private String token() {
